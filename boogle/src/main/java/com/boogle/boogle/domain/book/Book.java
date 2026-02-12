@@ -41,10 +41,7 @@ public class Book {
 
     private String translator;
 
-    @Column(nullable = false)
     private String publisher;
-
-    @Column(nullable = false)
     private LocalDate publishedDate;
 
     private String description;
