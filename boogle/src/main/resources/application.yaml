@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: boogle
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/boogle
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: false
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+    # org.hibernate.orm.jdbc.bind: trace # 바인딩 파라미터 값 확인하고 싶을 때 켜기

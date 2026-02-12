@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # 1. 데이터베이스 (PostgreSQL) - 모든 팀원 공통
+  db:
+    image: postgres:16
+    container_name: boogle-postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # 2. 검색 엔진 (Elasticsearch) - ES 담당자용
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: boogle-es
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m" # 램 512MB 제한 (팀원 배려)
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+
+volumes:
+  pgdata:
+  esdata:
