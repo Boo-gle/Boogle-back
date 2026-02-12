@@ -1,0 +1,12 @@
+spring:
+  elasticsearch:
+    # 도커 컴포즈에서 설정한 ES 포트(9200)로 연결
+    uris: [http://localhost:9200]
+    # (선택) 연결 시간 제한 설정
+    connection-timeout: 5s
+    socket-timeout: 3s
+
+logging:
+  level:
+    # ES 쿼리가 나가는 것을 로그 확인하고 싶을 때 유용
+    org.springframework.data.elasticsearch.client.WIRE: trace
