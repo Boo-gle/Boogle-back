@@ -28,6 +28,17 @@ services:
     volumes:
       - esdata:/usr/share/elasticsearch/data
 
+  # 3. 데이터 시각화 도구 (Kibana)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: boogle-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200 # ES 서버 연결
+    ports:
+      - "5601:5601" # 키바나 접속 포트
+    depends_on:
+      - elasticsearch # ES가 먼저 켜져야 키바나가 실행됨
+
 volumes:
   pgdata:
   esdata:
