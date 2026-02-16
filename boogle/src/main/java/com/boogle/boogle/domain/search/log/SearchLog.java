@@ -1,4 +1,4 @@
-package com.boogle.boogle.domain.log;
+package com.boogle.boogle.domain.search.log;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -14,8 +14,8 @@ import java.time.Instant;
 @Setter
 @NoArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-@Table(name = "logs")
-public class Log {
+@Table(name = "search_logs")
+public class SearchLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,12 +23,10 @@ public class Log {
     private Long id;
 
     @Column(nullable = false)
-    private String query;
+    private String keyword;
 
     @Column(nullable = false)
     private Integer resultCount;
-
-    private Integer responseTime; // ms 단위
 
     @CreatedDate
     private Instant searchedAt;
