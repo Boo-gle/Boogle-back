@@ -51,7 +51,7 @@ public class Book {
     @Column(nullable = false)
     private LocalDate publishedDate; // 알라딘 pubdate
 
-    @Lob
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     private Integer price; // 알라딘 pricestandard
