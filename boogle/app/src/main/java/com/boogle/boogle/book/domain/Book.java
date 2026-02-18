@@ -62,7 +62,7 @@ public class Book {
 
     private String thumbnailUrl;
 
-    private String seriesId;
+    private Integer seriesId;
     private String seriesName;
 
     @CreatedDate
@@ -72,7 +72,7 @@ public class Book {
     @LastModifiedDate // DB-> ES 동기화 시 어떤 도서 업데이트됐는지 자동 추적 가능
     private Instant updatedAt;
 
-    public Book(Category category, String title, String standardId, String author, String translator, String publisher, LocalDate publishedDate, String description, Integer price, ProductType productType, String thumbnailUrl, String seriesId, String seriesName) {
+    public Book(Category category, String title, String standardId, String author, String translator, String publisher, LocalDate publishedDate, String description, Integer price, ProductType productType, String thumbnailUrl, Integer seriesId, String seriesName) {
         this.category = category;
         this.title = title;
         this.standardId = standardId;
