@@ -21,6 +21,12 @@ spring:
         format_sql: true
     show-sql: false
 
+  batch:
+    jdbc:
+      initialize-schema: always # 배치가 실행될 때 필요한 메타 테이블들을 자동 생성해줌
+    job:
+      enabled: true # jenkins로 해당 잡을 실행하려면 enabled의 값이 true여야 함
+
 logging:
   level:
     org.hibernate.SQL: debug

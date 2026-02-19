@@ -12,6 +12,8 @@ dependencies {
     // app(도메인/레포/서비스) 재사용
     implementation project(':app')
 
+    implementation 'org.springframework:spring-web'
+
     // 배치
     implementation 'org.springframework.boot:spring-boot-starter-batch'
 
