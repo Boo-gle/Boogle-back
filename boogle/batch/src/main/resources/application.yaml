@@ -25,3 +25,8 @@ logging:
   level:
     org.hibernate.SQL: debug
     # org.hibernate.orm.jdbc.bind: trace # 바인딩 파라미터 값 확인하고 싶을 때 켜기
+
+management:
+  health:
+    elasticsearch:
+      enabled: false # ES가 꺼져 있어도 헬스체크 경고를 띄우지 않음
