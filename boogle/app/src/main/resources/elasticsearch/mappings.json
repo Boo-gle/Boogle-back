@@ -1,0 +1,41 @@
+{
+  "properties": {
+    "title": {
+      "type": "text",
+      "analyzer": "korean_nori_analyzer",
+      "fields": {
+        "keyword": { "type": "keyword" },
+        "autocomplete": { "type": "text", "analyzer": "autocomplete_analyzer" }
+      }
+    },
+    "titleChosung": {
+      "type": "text",
+      "analyzer": "standard"
+    },
+    "author": {
+      "type": "text",
+      "analyzer": "korean_nori_analyzer",
+      "fields": { "keyword": { "type": "keyword" } }
+    },
+    "publisher": {
+      "type": "text",
+      "analyzer": "korean_nori_analyzer",
+      "fields": { "keyword": { "type": "keyword" } }
+    },
+    "description": {
+      "type": "text",
+      "analyzer": "korean_nori_analyzer",
+      "term_vector": "with_positions_offsets"
+    },
+    "price": { "type": "integer" },
+    "publishedDate": { "type": "date" },
+    "categoryId": { "type": "integer" },
+    "productType": { "type": "keyword" },
+    "mallType": { "type": "keyword" },
+    "isbn": { "type": "keyword" },
+    "thumbnailUrl": {
+      "type": "keyword",
+      "index": false
+    }
+  }
+}

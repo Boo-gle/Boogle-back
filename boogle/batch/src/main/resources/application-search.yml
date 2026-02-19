@@ -1,6 +1,7 @@
 spring:
   data:
     elasticsearch:
+      uris: http://localhost:9200
       repositories:
         enabled: true
 
