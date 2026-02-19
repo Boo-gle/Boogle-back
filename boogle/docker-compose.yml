@@ -25,6 +25,7 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
+      - xpack.ml.enabled=false # 머신러닝 기능 off
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m" # 램 512MB 제한 (팀원 배려)
     ports:
       - "9200:9200"
@@ -33,7 +34,7 @@ services:
 
   # 3. 데이터 시각화 도구 (Kibana)
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.11.0
+    image: docker.elastic.co/kibana/kibana:9.2.3
     container_name: boogle-kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200 # ES 서버 연결
