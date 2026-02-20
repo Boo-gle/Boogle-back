@@ -16,6 +16,7 @@ dependencies {
 
     // 배치
     implementation 'org.springframework.boot:spring-boot-starter-batch'
+    implementation 'org.springframework.boot:spring-boot-starter-batch-jdbc'
 
     // 인덱싱(ES)
     implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
