@@ -23,7 +23,7 @@ public interface BookRepository extends JpaRepository<Book, Long> {
             or lower(b.translator) like lower(concat('%', :keyword, '%'))
             or lower(b.seriesName) like lower(concat('%', :keyword, '%'))
         """)
-    List<Book> searchByKeyword(@Param("keyword") String keyword);
+    Page<Book> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
     // ES - 마지막 동기화 시간 이후에 수정된 데이터를 페이징해서 가져오기
     Page<Book> findByUpdatedAtGreaterThanOrderByUpdatedAtAsc(Instant lastSyncTime, Pageable pageable);
