@@ -6,6 +6,10 @@ plugins {
     id 'org.jetbrains.kotlin.jvm'
     id 'org.jetbrains.kotlin.plugin.spring'
     id 'org.jetbrains.kotlin.plugin.jpa'
+
+    // 코틀린 롬복
+    id 'org.jetbrains.kotlin.plugin.lombok' version '2.2.21'
+    id 'org.jetbrains.kotlin.kapt'
 }
 
 dependencies {
@@ -34,6 +38,7 @@ dependencies {
     // Lombok (엔티티가 Java + Lombok이면 app에 반드시 있어야 함)
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+    kapt 'org.projectlombok:lombok'
 
     // Kotlin
     implementation 'org.jetbrains.kotlin:kotlin-reflect'
@@ -54,4 +59,8 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+kapt {
+    keepJavacAnnotationProcessors = true
 }

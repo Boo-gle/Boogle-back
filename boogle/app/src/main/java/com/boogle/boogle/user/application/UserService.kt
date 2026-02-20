@@ -17,7 +17,7 @@ class UserService(
         val user = userRepository.findByLoginId(loginId)
             ?: throw RuntimeException("아이디가 존재하지 않습니다.")
 
-        if(user.role != "admin") {
+        if(user.role != "ADMIN") {
             throw RuntimeException("관리자만 로그인 가능합니다.")
         }
 
