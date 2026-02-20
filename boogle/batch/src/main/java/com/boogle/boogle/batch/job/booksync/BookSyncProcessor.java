@@ -2,7 +2,8 @@ package com.boogle.boogle.batch.job.booksync;
 
 import com.boogle.boogle.batch.util.ChosungUtil;
 import com.boogle.boogle.book.domain.Book;
-import com.boogle.boogle.search.domain.BookDocument;
+
+import com.boogle.boogle.book.domain.document.BookDocument;
 import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.stereotype.Component;
 

@@ -11,7 +11,7 @@ import java.util.List;
 
 @Profile("search")
 @Configuration
-@EnableElasticsearchRepositories(basePackages = "com.boogle.boogle.search.infra")
+@EnableElasticsearchRepositories(basePackages = "com.boogle.boogle.book.infra")
 public class ElasticSearchConfig extends ElasticsearchConfiguration {
 
     @Value("${spring.elasticsearch.uris:http://localhost:9200}")

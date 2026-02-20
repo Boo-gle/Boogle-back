@@ -1,7 +1,8 @@
 package com.boogle.boogle.batch.job.booksync;
 
 import com.boogle.boogle.book.domain.Book;
-import com.boogle.boogle.search.domain.BookDocument;
+
+import com.boogle.boogle.book.domain.document.BookDocument;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -35,7 +36,8 @@ public class BookSyncJobConfig {
                 .build();
     }
 
-    // 2. 실제 데이터가 흐르는 단계 (Step)
+    // 실제 데이터가 흐르는 단계
+    // 빨간줄은 버전업으로 다른 방법으로 바꿀 예정이라는 경고
     @Bean
     public Step bookSyncStep() {
         return new StepBuilder("bookSyncStep", jobRepository)
