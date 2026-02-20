@@ -34,10 +34,20 @@
         "tokenizer": "autocomplete_tokenizer",
         "filter": ["lowercase"]
       },
-      "korean_nori_analyzer": {
+      "korean_nori_index_analyzer": {
         "type": "custom",
         "tokenizer": "nori_mixed_tokenizer",
         "filter": [
+          "nori_readingform",
+          "lowercase",
+          "nori_posfilter"
+        ]
+      },
+      "korean_nori_search_analyzer": {
+        "type": "custom",
+        "tokenizer": "nori_mixed_tokenizer",
+        "filter": [
+          "nori_readingform",
           "lowercase",
           "nori_posfilter",
           "synonym_graph_filter"

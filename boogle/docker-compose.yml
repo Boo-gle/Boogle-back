@@ -17,7 +17,7 @@ services:
 
   # 2. 검색 엔진 (Elasticsearch) - ES 담당자용
   elasticsearch:
-    # image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    # image: docker.elastic.co/elasticsearch/elasticsearch:9.2.3
     build:
       context: .
       dockerfile: Dockerfile
@@ -31,6 +31,7 @@ services:
       - "9200:9200"
     volumes:
       - esdata:/usr/share/elasticsearch/data
+      - ./synonyms.txt:/usr/share/elasticsearch/config/synonyms.txt
 
   # 3. 데이터 시각화 도구 (Kibana)
   kibana:

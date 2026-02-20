@@ -7,7 +7,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create
+      # ddl-auto: create # application-local.yml로 옮겨주세요.
     properties:
       hibernate:
         format_sql: true
