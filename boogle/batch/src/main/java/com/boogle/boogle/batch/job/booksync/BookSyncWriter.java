@@ -1,7 +1,8 @@
 package com.boogle.boogle.batch.job.booksync;
 
-import com.boogle.boogle.search.domain.BookDocument;
-import com.boogle.boogle.search.infra.BookSearchRepository;
+
+import com.boogle.boogle.book.domain.document.BookDocument;
+import com.boogle.boogle.book.infra.BookSearchRepository;
 import lombok.RequiredArgsConstructor;
 
 

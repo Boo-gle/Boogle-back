@@ -1,10 +1,12 @@
-package com.boogle.boogle.search.domain;
+package com.boogle.boogle.book.domain.document;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.elasticsearch.annotations.*;
 
 import static org.springframework.data.elasticsearch.annotations.FieldType.*;
+import static org.springframework.data.elasticsearch.annotations.FieldType.Integer;
+import static org.springframework.data.elasticsearch.annotations.FieldType.Keyword;
 
 @Getter
 @Builder
