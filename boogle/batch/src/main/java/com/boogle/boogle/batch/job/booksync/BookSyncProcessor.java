@@ -26,6 +26,14 @@ public class BookSyncProcessor implements ItemProcessor<Book, BookDocument> {
                 .publisher(book.getPublisher())
                 .mallType(convertedMallType)
                 .productType(book.getProductType().name())
+                .description(book.getDescription())
+                .price(book.getPrice())
+                .thumbnailUrl(book.getThumbnailUrl())
+                .isbn(book.getStandardId())
+                .publishedDate(book.getPublishedDate().toString())
+                .categoryId(book.getCategory().getId())
+                .categoryDepth2(book.getCategory().getCategoryDepth2())
+                .updatedAt(book.getUpdatedAt() != null ? book.getUpdatedAt().toEpochMilli() : null)
                 .build();
     }
 
