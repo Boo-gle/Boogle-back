@@ -8,14 +8,14 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.batch.infrastructure.item.Chunk;
 import org.springframework.batch.infrastructure.item.ItemWriter;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-@Profile("search")
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "search.es.enabled", havingValue = "true")
 public class BookSyncWriter implements ItemWriter<BookDocument> {
 
     private final BookSearchRepository bookSearchRepository;
