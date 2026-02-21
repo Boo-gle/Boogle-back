@@ -31,6 +31,7 @@ public class BookDocument { // ES에 저장될 구조
     private String mallType;
     private String isbn;
     private String thumbnailUrl; // 검색 제외, 단순 출력용
-    private Instant updatedAt; // ES에서 업데이트 시간 추적용
+    private Long updatedAt; // ES에서 업데이트 시간 추적용
+    private String categoryDepth2; // 소설/시/희곡같은 거
 
 }

@@ -1,10 +1,10 @@
 package com.boogle.boogle.book.infra;
 
 import com.boogle.boogle.book.domain.document.BookDocument;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 
-@Profile("search")
+@ConditionalOnProperty(name = "search.es.enabled", havingValue = "true")
 public interface BookSearchRepository extends ElasticsearchRepository<BookDocument, String> {
 
 
