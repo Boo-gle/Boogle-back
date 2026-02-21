@@ -5,9 +5,9 @@ import com.boogle.boogle.batch.external.dto.AladinBookItemDto
 import org.springframework.batch.infrastructure.item.ItemReader
 
 /**
- * 기본 정책: 2(searchTarget) * yearRepeat(기본 5) * maxStart(기본 20) * maxResults(기본 50)
+ * 기본 정책: 2(searchTarget) * yearRepeat(기본 8) * maxStart(기본 20) * maxResults(기본 50)
  */
-class AladinPagingItemReader(
+open class AladinPagingItemReader(
     private val client: AladinBookApiClient,
     private val queryType: String,
     private val baseYear: Int,
@@ -26,6 +26,15 @@ class AladinPagingItemReader(
     private var buffer: List<AladinBookItemDto> = emptyList()
     private var bufferIdx: Int = 0
 
+    // ✅ 스킵 로그용 “마지막 요청 컨텍스트”
+    private var lastYear: Int? = null
+    private var lastMallType: String? = null
+    private var lastStart: Int? = null
+
+    fun lastRequestYear(): Int? = lastYear
+    fun lastRequestMallType(): String? = lastMallType
+    fun lastRequestStart(): Int? = lastStart
+
     override fun read(): AladinBookItemDto? {
         if (bufferIdx < buffer.size) return buffer[bufferIdx++]
 
@@ -34,6 +43,11 @@ class AladinPagingItemReader(
 
             val year = baseYear - yearOffset
             val searchTarget = searchTargets[targetIdx]
+
+            // ✅ client 호출 전에 “이번 요청” 컨텍스트 저장 (파싱 예외 대비)
+            lastYear = year
+            lastMallType = searchTarget
+            lastStart = start
 
             buffer = client.fetchItemList(
                 searchTarget = searchTarget,
@@ -64,4 +78,3 @@ class AladinPagingItemReader(
         yearOffset += 1
     }
 }
-

@@ -27,7 +27,7 @@ class InitialLoadReaderConfig(
     fun aladinItemListReader(
         @Value("#{jobParameters['runDate']}") runDateParam: String?,
         @Value("#{jobParameters['queryType']}") queryTypeParam: String?,
-    ): ItemReader<AladinBookItemDto> {
+    ): AladinPagingItemReader {
         val runDate = resolveRunDate(runDateParam)
         val queryType = resolveQueryType(queryTypeParam)
 
