@@ -11,7 +11,8 @@
           "search_analyzer": "standard"
         },
         "keyword": {
-          "type": "keyword"
+          "type": "keyword",
+          "normalizer": "lowercase_normalizer"
         }
       }
     },
@@ -26,7 +27,8 @@
       "search_analyzer": "korean_nori_search_analyzer",
       "fields": {
         "keyword": {
-          "type": "keyword"
+          "type": "keyword",
+          "normalizer": "lowercase_normalizer"
         }
       }
     },
@@ -36,7 +38,8 @@
       "search_analyzer": "korean_nori_search_analyzer",
       "fields": {
         "keyword": {
-          "type": "keyword"
+          "type": "keyword",
+          "normalizer": "lowercase_normalizer"
         }
       }
     },

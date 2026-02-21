@@ -4,6 +4,12 @@
     "number_of_replicas": 0
   },
   "analysis": {
+    "normalizer": {
+      "lowercase_normalizer": {
+        "type": "custom",
+        "filter": ["lowercase"]
+      }
+    },
     "tokenizer": {
       "autocomplete_tokenizer": {
         "type": "edge_ngram",
