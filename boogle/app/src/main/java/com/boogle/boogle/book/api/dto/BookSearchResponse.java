@@ -10,11 +10,13 @@ public record BookSearchResponse(
         String title,
         String highlightTitle, // ES 검색 강조된 제목
         String author,
+        String description,
+        String highlightDescription,
         String publisher,
         String thumbnailUrl,
         Integer price,
         Double score, // ES 검색 가중치 점수
-        String categoryDepth1
+        String categoryDepth2
 ) {
 
     // DB LIKE & ES 결과 모두 응답함
