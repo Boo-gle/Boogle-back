@@ -4,8 +4,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.Instant;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 
 @Entity
 @Getter
@@ -35,7 +36,7 @@ public class LowQualityKeywordDaily {
     private Integer dailyCount;
 
     @Column(nullable = false)
-    private Instant lastSeenAt;
+    private OffsetDateTime lastSeenAt;
 
     private LocalDate lastIngestedOn;
 
@@ -45,12 +46,31 @@ public class LowQualityKeywordDaily {
     @Column(nullable = false)
     private SynonymStatus status; // UNPROCESSED(기본값), EXCLUDED, SCHEDULED
 
-    public LowQualityKeywordDaily(String searchKeyword, Instant lastSeenAt, String suggestedKeyword) {
-        this.eventDate = LocalDate.now();
+    public LowQualityKeywordDaily(LocalDate eventDate, String searchKeyword, String suggestedKeyword) {
+
+        if(searchKeyword == null || searchKeyword.isBlank()){
+            throw new IllegalArgumentException("searchKeyword must not be blank");
+        }
+
+        this.eventDate = eventDate;
         this.searchKeyword = searchKeyword;
         this.dailyCount = 1;
-        this.lastSeenAt = lastSeenAt == null ? Instant.now() : lastSeenAt;
+        this.lastSeenAt = OffsetDateTime.now(ZoneId.of("Asia/Seoul"));
         this.suggestedKeyword = suggestedKeyword;
         this.status = SynonymStatus.UNPROCESSED;
     }
+
+    public void markKeyword(String suggestedKeyword) {
+        // lastSeenAt: 인서트/업데이트 시점
+        this.lastSeenAt = OffsetDateTime.now(ZoneId.of("Asia/Seoul"));
+
+        // suggestedKeyword: 팀원이 넘긴 추천 키워드 저장(최신값으로 덮어쓰기)
+        if(suggestedKeyword != null && !suggestedKeyword.isBlank()){
+            this.suggestedKeyword = suggestedKeyword;
+        }
+
+        // dailyCount: 있으면 +1
+        this.dailyCount += 1;
+    }
+
 }
