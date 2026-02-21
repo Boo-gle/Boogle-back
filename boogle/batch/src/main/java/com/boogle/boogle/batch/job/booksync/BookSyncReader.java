@@ -6,16 +6,16 @@ import com.boogle.boogle.book.infra.BookRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.infrastructure.item.data.RepositoryItemReader;
 import org.springframework.batch.infrastructure.item.data.builder.RepositoryItemReaderBuilder;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Sort;
 
 import java.util.Collections;
 
-@Profile("search")
 @Configuration
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "search.es.enabled", havingValue = "true")
 public class BookSyncReader {
 
     private final BookRepository bookRepository;

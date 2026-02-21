@@ -22,3 +22,7 @@ management:
   health:
     elasticsearch:
       enabled: false # ES가 꺼져 있어도 헬스체크 경고를 띄우지 않음
+
+search:
+  es:
+    enabled: false

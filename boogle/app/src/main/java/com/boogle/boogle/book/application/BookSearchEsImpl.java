@@ -3,15 +3,16 @@ package com.boogle.boogle.book.application;
 import com.boogle.boogle.book.api.dto.BookSearchRequest;
 import com.boogle.boogle.book.api.dto.BookSearchResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-@Profile("search")
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "search.es.enabled", havingValue = "true")
 public class BookSearchEsImpl implements BookSearchService {
 
     private final ElasticsearchOperations elasticsearchOperations;
