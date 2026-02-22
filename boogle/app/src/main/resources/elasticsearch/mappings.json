@@ -72,6 +72,9 @@
       "type": "keyword",
       "index": false
     },
+    "categoryDepth2": {
+      "type": "keyword"
+    },
     "updatedAt": {
       "type": "date",
       "format": "epoch_millis||strict_date_optional_time"
