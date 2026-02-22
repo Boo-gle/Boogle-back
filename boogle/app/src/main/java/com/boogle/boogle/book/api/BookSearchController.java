@@ -2,14 +2,14 @@ package com.boogle.boogle.book.api;
 
 import com.boogle.boogle.book.api.dto.BookSearchRequest;
 import com.boogle.boogle.book.api.dto.BookSearchResponse;
+import com.boogle.boogle.book.api.dto.SuggestionResponse;
 import com.boogle.boogle.book.application.BookSearchService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 
 @RestController
@@ -32,5 +32,11 @@ public class BookSearchController {
     ) {
         return bookSearchService.search(request);
     }
+
+    @GetMapping("/suggestions")
+    public List<SuggestionResponse> getSuggestions(@RequestParam String keyword) {
+        return bookSearchService.getSuggestions(keyword);
+    }
+
 
 }

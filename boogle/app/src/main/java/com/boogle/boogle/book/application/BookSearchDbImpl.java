@@ -1,5 +1,6 @@
 package com.boogle.boogle.book.application;
 
+import com.boogle.boogle.book.api.dto.SuggestionResponse;
 import com.boogle.boogle.book.domain.Book;
 import com.boogle.boogle.book.infra.BookRepository;
 import com.boogle.boogle.book.api.dto.BookSearchRequest;
@@ -11,6 +12,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +43,11 @@ public class BookSearchDbImpl implements BookSearchService {
                         .thumbnailUrl(book.getThumbnailUrl())
                         .price(book.getPrice())
                         .build());
+    }
+
+    @Override
+    public List<SuggestionResponse> getSuggestions(String keyword) {
+        return List.of();
     }
 
 }
