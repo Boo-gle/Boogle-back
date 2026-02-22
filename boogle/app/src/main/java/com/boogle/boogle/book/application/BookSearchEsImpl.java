@@ -4,6 +4,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import com.boogle.boogle.book.api.dto.BookSearchRequest;
 import com.boogle.boogle.book.api.dto.BookSearchResponse;
 import com.boogle.boogle.book.domain.document.BookDocument;
+import com.boogle.boogle.search.application.LowQualityKeywordDailyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
@@ -30,6 +31,8 @@ import java.util.stream.Collectors;
 public class BookSearchEsImpl implements BookSearchService {
 
     private final ElasticsearchOperations elasticsearchOperations;
+
+    private final LowQualityKeywordDailyService lowQualityKeywordDailyService;
 
     @Override
     public Page<BookSearchResponse> search(BookSearchRequest request) {
@@ -73,6 +76,15 @@ public class BookSearchEsImpl implements BookSearchService {
 
         // BookDocument 타입으로 ES에 보내기
         SearchHits<BookDocument> searchHits = elasticsearchOperations.search(query, BookDocument.class);
+
+        // 검색 결과가 0건일 때 실패어 기록
+        if (searchHits.getTotalHits() == 0) {
+            String keyword = request.keyword().trim();
+            // TODO: 다음 단계에서 ES Suggest API 쿼리를 짜서 실제 추천어를 받아올 예정입니다.
+            String esSuggestedKeyword = null;
+
+            lowQualityKeywordDailyService.recordLowQualityKeyword(keyword, esSuggestedKeyword);
+        }
 
         // 프론트로 보내기 위해 DTO로 매핑하기
         List<BookSearchResponse> bookSearchList = searchHits.getSearchHits().stream()
