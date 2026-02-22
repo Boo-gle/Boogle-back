@@ -73,4 +73,11 @@ public class LowQualityKeywordDaily {
         this.dailyCount += 1;
     }
 
+    // 관리자 대시보드 상태 변경용
+    public void updateStatus(SynonymStatus newStatus) {
+        if (newStatus != null) {
+            this.status = newStatus;
+        }
+    }
+
 }
