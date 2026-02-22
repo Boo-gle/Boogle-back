@@ -1,5 +1,6 @@
 package com.boogle.boogle.book.api;
 
+import com.boogle.boogle.book.api.dto.AggregationResponse;
 import com.boogle.boogle.book.api.dto.BookSearchRequest;
 import com.boogle.boogle.book.api.dto.BookSearchResponse;
 import com.boogle.boogle.book.api.dto.SuggestionResponse;
@@ -35,8 +36,19 @@ public class BookSearchController {
 
     @GetMapping("/suggestions")
     public List<SuggestionResponse> getSuggestions(@RequestParam String keyword) {
+
         return bookSearchService.getSuggestions(keyword);
     }
 
+    @GetMapping("/aggregations")
+    public AggregationResponse getCategoryAggregations(
+            @RequestParam(
+                    required = false,
+                    defaultValue = "")
+            String keyword
+    ) {
+
+        return bookSearchService.getCategoryAggregations(keyword);
+    }
 
 }

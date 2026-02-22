@@ -1,6 +1,8 @@
 package com.boogle.boogle.book.application;
 
+import co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
+import com.boogle.boogle.book.api.dto.AggregationResponse;
 import com.boogle.boogle.book.api.dto.BookSearchRequest;
 import com.boogle.boogle.book.api.dto.BookSearchResponse;
 import com.boogle.boogle.book.api.dto.SuggestionResponse;
@@ -12,6 +14,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchAggregation;
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchAggregations;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
@@ -190,6 +194,65 @@ public class BookSearchEsImpl implements BookSearchService {
         return "TITLE".equals(type) ? 1 : 2;
     }
 
+
+    public AggregationResponse getCategoryAggregations(String keyword) {
+        String cleanKeyword = keyword != null ? keyword.trim() : "";
+
+        NativeQuery query = NativeQuery.builder()
+                .withQuery(q -> q.bool(
+                        b -> {
+                            if (!cleanKeyword.isEmpty()) {
+                                // 메인 검색과 완전히 동일한 조건으로 책을 먼저 찾기
+                                b.should(s -> s.term(
+                                                t -> t.field("title.keyword").value(cleanKeyword).boost(10.0F)
+                                        ))
+                                        .should(s -> s.multiMatch(
+                                                mm -> mm.query(cleanKeyword)
+                                                        .fields("title^4.0",
+                                                                "author^1.5",
+                                                                "publisher",
+                                                                "description")
+                                                        .type(TextQueryType.BestFields)
+                                                        .fuzziness("AUTO")
+                                        ))
+                                        .minimumShouldMatch("1");
+                            }
+                            return b;
+                        }
+                ))
+                .withAggregation("category_count", Aggregation.of(a -> a
+                        .terms(t -> t
+                                .field("categoryDepth2.keyword")
+                                .size(10)
+                        )
+                ))
+                .withMaxResults(0) // 데이터 X 집계만 ㅇ
+                .build();
+
+        SearchHits<BookDocument> hits = elasticsearchOperations.search(query, BookDocument.class);
+
+        List<AggregationResponse.AggregationBucket> categoryBuckets = new ArrayList<>();
+
+        if (hits.hasAggregations()) {
+            var aggregations = (ElasticsearchAggregations) hits.getAggregations();
+            var elcAggregation = aggregations.aggregationsAsMap().get("category_count");
+
+            if (elcAggregation != null) {
+                var aggregate = elcAggregation.aggregation().getAggregate();
+
+                if (aggregate.isSterms()) {
+                    categoryBuckets = aggregate.sterms().buckets().array().stream()
+                            .map(bucket -> new AggregationResponse.AggregationBucket(
+                                    bucket.key().stringValue(),
+                                    bucket.docCount()
+                            ))
+                            .collect(Collectors.toList());
+                }
+            }
+        }
+
+        return new AggregationResponse(categoryBuckets);
+    }
 
 }
 

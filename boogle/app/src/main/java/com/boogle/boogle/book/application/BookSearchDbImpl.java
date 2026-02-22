@@ -1,5 +1,6 @@
 package com.boogle.boogle.book.application;
 
+import com.boogle.boogle.book.api.dto.AggregationResponse;
 import com.boogle.boogle.book.api.dto.SuggestionResponse;
 import com.boogle.boogle.book.domain.Book;
 import com.boogle.boogle.book.infra.BookRepository;
@@ -11,7 +12,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -48,6 +48,11 @@ public class BookSearchDbImpl implements BookSearchService {
     @Override
     public List<SuggestionResponse> getSuggestions(String keyword) {
         return List.of();
+    }
+
+    @Override
+    public AggregationResponse getCategoryAggregations(String keyword) {
+        return new AggregationResponse(List.of());
     }
 
 }
