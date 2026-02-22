@@ -16,7 +16,11 @@ public record BookSearchResponse(
         String thumbnailUrl,
         Integer price,
         Double score, // ES 검색 가중치 점수
-        String categoryDepth2
+        String categoryDepth2,
+        String isbn,
+        String publishedDate,
+        String mallType,
+        String productType
 ) {
 
     // DB LIKE & ES 결과 모두 응답함
