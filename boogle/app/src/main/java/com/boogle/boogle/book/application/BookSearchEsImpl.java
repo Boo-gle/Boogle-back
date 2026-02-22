@@ -1,7 +1,11 @@
 package com.boogle.boogle.book.application;
 
+import co.elastic.clients.elasticsearch._types.SuggestMode;
 import co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
+import co.elastic.clients.elasticsearch.core.search.FieldSuggester;
+import co.elastic.clients.elasticsearch.core.search.StringDistance;
+import co.elastic.clients.elasticsearch.core.search.Suggester;
 import com.boogle.boogle.book.api.dto.AggregationResponse;
 import com.boogle.boogle.book.api.dto.BookSearchRequest;
 import com.boogle.boogle.book.api.dto.BookSearchResponse;
@@ -14,11 +18,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.elasticsearch.client.elc.ElasticsearchAggregation;
 import org.springframework.data.elasticsearch.client.elc.ElasticsearchAggregations;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
-import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.query.HighlightQuery;
 import org.springframework.data.elasticsearch.core.query.highlight.Highlight;
@@ -67,7 +69,7 @@ public class BookSearchEsImpl implements BookSearchService {
                                                 .type(TextQueryType.BestFields) // 젤 높은거 채택
                                                 .fuzziness("AUTO") // 오타교정
                                 ))
-                                .minimumShouldMatch("1")
+                                .minimumShouldMatch("100%")
                 ))
                 .withHighlightQuery(new HighlightQuery(
                         new Highlight(List.of(
@@ -79,6 +81,19 @@ public class BookSearchEsImpl implements BookSearchService {
                         )), BookDocument.class
                 ))
                 .withPageable(pageable)
+                .withSuggester(Suggester.of(s -> s
+                        .suggesters("spell-check", FieldSuggester.of(fs -> fs
+                                .text(request.keyword().trim()) // 오타 단어
+                                .term(t -> t
+                                        .field("title") // 오타를 검사할 기준 필드 (mappings.json 기준)
+                                        .suggestMode(SuggestMode.Popular) // 더 자주 검색되는/존재하는 단어로 추천
+                                        .minWordLength(2)
+                                        .prefixLength(0)
+                                        .maxEdits(2)
+                                        .stringDistance(StringDistance.Levenshtein)
+                                )
+                        ))
+                ))
                 .build();
 
         // BookDocument 타입으로 ES에 보내기
@@ -87,10 +102,33 @@ public class BookSearchEsImpl implements BookSearchService {
         // 검색 결과가 0건일 때 실패어 기록
         if (searchHits.getTotalHits() == 0) {
             String keyword = request.keyword().trim();
-            // TODO: 다음 단계에서 ES Suggest API 쿼리를 짜서 실제 추천어를 받아올 예정입니다.
             String esSuggestedKeyword = null;
 
-            lowQualityKeywordDailyService.recordLowQualityKeyword(keyword, esSuggestedKeyword);
+            // 엘라스틱서치가 응답에 'Suggest' 결과를 같이 보내줬는지 확인
+            // 결과와 상관없이 ES가 추천해준 단어가 있는지 먼저 확인 (무조건 추출)
+            if (searchHits.hasSuggest()) {
+                // spell-check라는 이름으로 요청했던 서제스터 결과를 가져옴
+                var suggestion = searchHits.getSuggest().getSuggestion("spell-check");
+                var entries = suggestion.getEntries();
+
+                // 추천 결과가 존재하고, 그 안에 실제 옵션(단어)이 들어있는지 확인
+                if (entries != null && !entries.isEmpty() && !entries.get(0).getOptions().isEmpty()) {
+                    // 가장 확률이 높은 첫 번째 추천 단어를 꺼냄
+                    esSuggestedKeyword = entries.get(0).getOptions().get(0).getText();
+                }
+            }
+
+            // 2. 팀원이 정의한 "실패어 기록 조건" 확인
+            // 상황 A: 검색 결과가 0건일 때
+            // 상황 B: 결과는 있지만 품질이 너무 낮을 때 (예: 결과가 3건 미만)
+            long totalHits = searchHits.getTotalHits();
+            boolean isLowQuality = (totalHits == 0) || (totalHits < 3);
+
+            if (isLowQuality) {
+                // 원본 검색어와 ES가 찾은 추천어를 DB에 쌓음
+                lowQualityKeywordDailyService.recordLowQualityKeyword(keyword, esSuggestedKeyword);
+            }
+
         }
 
         // 프론트로 보내기 위해 DTO로 매핑하기

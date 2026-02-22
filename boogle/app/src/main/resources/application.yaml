@@ -25,4 +25,4 @@ management:
 
 search:
   es:
-    enabled: true
+    enabled: false
