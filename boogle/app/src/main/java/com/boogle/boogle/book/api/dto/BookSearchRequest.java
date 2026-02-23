@@ -14,12 +14,13 @@ public record BookSearchRequest( // 검색어랑 페이징 정보 요청
          String priceRange, // 가격 - ~1만원, 10000-30000 등 문자열로 받아 파싱
          String dateRange, // 출간일 - 3개월, 1년 등 문자열로 받아 날짜 계산
          Integer page,
-         Integer size
+         Integer size,
+                                 String sort
 ) {
 
     public BookSearchRequest {
         if (page == null) page = 0;
-        if (size == null) size = 10;
+        if (size == null) size = 15;
         if (size > 100) size = 100; // 상한 제한
     }
 }

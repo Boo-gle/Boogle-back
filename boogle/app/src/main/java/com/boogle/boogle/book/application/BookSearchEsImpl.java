@@ -6,6 +6,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import co.elastic.clients.elasticsearch.core.search.FieldSuggester;
 import co.elastic.clients.elasticsearch.core.search.StringDistance;
 import co.elastic.clients.elasticsearch.core.search.Suggester;
+import co.elastic.clients.json.JsonData;
 import com.boogle.boogle.book.api.dto.AggregationResponse;
 import com.boogle.boogle.book.api.dto.BookSearchRequest;
 import com.boogle.boogle.book.api.dto.BookSearchResponse;
@@ -48,29 +49,115 @@ public class BookSearchEsImpl implements BookSearchService {
         // 페이징
         Pageable pageable = PageRequest.of(request.page(), request.size());
 
+        // 정렬 로직 추가
+        org.springframework.data.domain.Sort sort;
+        String sortParam = request.sort() != null ? request.sort() : "accuracy";
+
+        switch (sortParam) {
+            case "title":
+                // 상품명순 (한글/영문 오름차순)
+                sort = org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "title.keyword");
+                break;
+            case "price_asc":
+                // 저가격순
+                sort = org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "price");
+                break;
+            case "latest":
+                // 신상품순 (출간일 내림차순)
+                sort = org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "publishedDate");
+                break;
+            case "accuracy":
+            default:
+                // 정확도순 (ES 기본 스코어 정렬)
+                sort = org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "_score");
+                break;
+        }
+
         // 가중치 + 오타교정 + 하이라이팅
         NativeQuery query = NativeQuery.builder()
-                .withQuery(q -> q.bool(
-                        b -> b
-                                .should(s -> s.term( // 가중치 1. 키워드 100& 일치면 1순위
-                                        t -> t
-                                                .field("title.keyword")
-                                                .value(request.keyword().trim())
-                                                .boost(10.0F)
-                                ))
-                                .should(s -> s.multiMatch( // 가중치 2, 부분 일치 및 오타 교정 포함
-                                        mm -> mm.query(request.keyword().trim())
-                                                .fields(
-                                                        "title^4.0",
-                                                        "author^1.5",
-                                                        "publisher",
-                                                        "description"
-                                                )
-                                                .type(TextQueryType.BestFields) // 젤 높은거 채택
-                                                .fuzziness("AUTO") // 오타교정
-                                ))
-                                .minimumShouldMatch("100%")
-                ))
+                .withQuery(q -> q.bool(b -> {
+
+                    // --- 동적 검색 필드 결정 로직 ---
+                    List<String> targetFields = new ArrayList<>();
+
+                    // 프론트에서 넘어온 searchConditions(title, author, publisher)가 있는지 확인
+                    if (request.searchConditions() != null && !request.searchConditions().isEmpty()) {
+                        for (String cond : request.searchConditions()) {
+                            if (cond.equals("title")) targetFields.add("title^4.0");
+                            if (cond.equals("author")) targetFields.add("author^1.5");
+                            if (cond.equals("publisher")) targetFields.add("publisher");
+                        }
+                    }
+
+                    // 만약 체크박스를 하나도 안 선택했다면 기본 필드 전체 검색
+                    if (targetFields.isEmpty()) {
+                        targetFields = List.of("title^4.0", "author^1.5", "publisher", "description");
+                    }
+
+                    // 검색 로직
+                    b.should(s -> s.term(t -> t
+                            .field("title.keyword")
+                            .value(request.keyword().trim())
+                            .boost(10.0F)
+                    ));
+
+                    List<String> finalTargetFields = targetFields;
+
+                    b.should(s -> s.multiMatch(mm -> mm
+                            .query(request.keyword().trim())
+                            .fields(finalTargetFields)
+                            .type(TextQueryType.BestFields)
+                            .fuzziness("AUTO")
+                    ));
+
+                    b.minimumShouldMatch("1");
+
+                   // 가격 필터
+                    if (request.priceRange() != null && !request.priceRange().isEmpty()) {
+                        String[] prices = request.priceRange().split("-");
+                        String min = prices[0];
+                        String max = (prices.length > 1 && !prices[1].equals("0"))
+                                ? prices[1]
+                                : "99999999";
+
+                        b.filter(f -> f.range(r -> r
+                                .untyped(u -> u
+                                        .field("price")
+                                        .gte(JsonData.of(min))
+                                        .lte(JsonData.of(max))
+                                )
+                        ));
+                    }
+
+                    // 출간일 필터
+                    if (request.dateRange() != null && !request.dateRange().isEmpty()) {
+                        b.filter(f -> f.range(r -> r
+                                .untyped(u -> u
+                                        .field("publishedDate")
+                                        .gte(JsonData.of(request.dateRange()))
+                                )
+                        ));
+                    }
+
+                    // 카테고리 필터
+                    if (request.categoryDepth2() != null && !request.categoryDepth2().isEmpty()) {
+                        b.filter(f -> f.term(t -> t
+                                .field("categoryDepth2.keyword")
+                                .value(request.categoryDepth2())
+                        ));
+                    }
+
+                    // 국내/국외 필터
+                    if (request.productType() != null && !request.productType().isEmpty()) {
+                        b.filter(f -> f.term(t -> t
+                                .field("productType") // document 정의에 필드명이 대소문자 맞는지 확인
+                                .value(request.productType())
+                        ));
+                    }
+
+                    return b;
+
+                }))
                 .withHighlightQuery(new HighlightQuery(
                         new Highlight(List.of(
                                 new HighlightField("title"),
@@ -94,6 +181,7 @@ public class BookSearchEsImpl implements BookSearchService {
                                 )
                         ))
                 ))
+                .withSort(sort)
                 .build();
 
         // BookDocument 타입으로 ES에 보내기
@@ -138,7 +226,7 @@ public class BookSearchEsImpl implements BookSearchService {
 
                     // 하이라이트 텍스트 추출
                     String highlightedTitle = Optional.ofNullable(hit.getHighlightField("title"))
-                            .filter(list -> !list.isEmpty())
+                            .filter( list -> !list.isEmpty())
                             .map(list -> list.get(0))
                             .orElse(bookdc.getTitle()); // 하이라이팅이 없으면 원본 제목 반환
 
@@ -159,6 +247,10 @@ public class BookSearchEsImpl implements BookSearchService {
                             .categoryDepth2(bookdc.getCategoryDepth2())
                             .description(bookdc.getDescription())
                             .highlightDescription(highlightedDesc)
+                            .isbn(bookdc.getIsbn())
+                            .publishedDate(bookdc.getPublishedDate())
+                            .mallType(bookdc.getMallType())
+                            .productType(bookdc.getProductType())
                             .build();
                 }).collect(Collectors.toList());
 
