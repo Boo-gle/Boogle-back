@@ -80,4 +80,9 @@ public class LowQualityKeywordDaily {
         }
     }
 
+    // lastIngestedOn 컬럼 수정용
+    public void updateLastIngestedOn(LocalDate newDate) {
+        this.lastIngestedOn = newDate;
+    }
+
 }
