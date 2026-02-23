@@ -3,7 +3,11 @@ package com.boogle.boogle.batch.external.dto
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 
 @JsonIgnoreProperties(ignoreUnknown = true) // 루트 객체의 필요하지 않은 필드 무시
-data class AladinBookApiResponse (val item: List<AladinBookItemDto> = emptyList())
+data class AladinBookApiResponse (
+    val totalResults: Int? = null,
+    val itemsPerPage: Int? = null,
+    val item: List<AladinBookItemDto> = emptyList()
+)
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class AladinBookItemDto (

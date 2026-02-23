@@ -42,3 +42,7 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 }
+
+allOpen {
+    annotation("com.boogle.boogle.batch.common.OpenForProxy")
+}

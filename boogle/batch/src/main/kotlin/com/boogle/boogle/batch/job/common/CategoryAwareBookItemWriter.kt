@@ -1,5 +1,6 @@
-package com.boogle.boogle.batch.job.initialload
+package com.boogle.boogle.batch.job.common
 
+import com.boogle.boogle.batch.common.OpenForProxy
 import com.boogle.boogle.book.domain.Book
 import com.boogle.boogle.book.domain.Category
 import com.boogle.boogle.book.infra.BookRepository
@@ -7,6 +8,7 @@ import com.boogle.boogle.book.infra.CategoryRepository
 import org.springframework.batch.infrastructure.item.Chunk
 import org.springframework.batch.infrastructure.item.ItemWriter
 
+@OpenForProxy
 class CategoryAwareBookItemWriter(
     private val categoryRepository: CategoryRepository,
     private val bookRepository: BookRepository,
