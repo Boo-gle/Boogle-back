@@ -1,10 +1,12 @@
 package com.boogle.boogle.batch.job.common
 
+import com.boogle.boogle.batch.common.OpenForProxy
 import com.boogle.boogle.batch.external.dto.AladinBookItemDto
 import com.boogle.boogle.book.domain.Book
 import com.boogle.boogle.book.domain.Category
 import org.springframework.batch.infrastructure.item.ItemProcessor
 
+@OpenForProxy
 class AladinBookItemProcessor : ItemProcessor<AladinBookItemDto, Book> {
 
     override fun process(dto: AladinBookItemDto): Book? {
