@@ -1,4 +1,4 @@
-package com.boogle.boogle.batch.job.initialload
+package com.boogle.boogle.batch.job.common
 
 import com.boogle.boogle.book.domain.Book
 import com.boogle.boogle.book.domain.Category

@@ -2,6 +2,7 @@ package com.boogle.boogle.batch.job.initialload
 
 import com.boogle.boogle.batch.external.dto.AladinBookItemDto
 import com.boogle.boogle.batch.job.common.AladinBookItemProcessor
+import com.boogle.boogle.batch.job.common.CategoryAwareBookItemWriter
 import com.boogle.boogle.book.domain.Book
 import com.boogle.boogle.book.infra.BookRepository
 import com.boogle.boogle.book.infra.CategoryRepository
