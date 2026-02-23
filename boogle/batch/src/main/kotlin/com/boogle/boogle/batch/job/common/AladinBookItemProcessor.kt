@@ -1,11 +1,11 @@
-package com.boogle.boogle.batch.job.initialload
+package com.boogle.boogle.batch.job.common
 
 import com.boogle.boogle.batch.external.dto.AladinBookItemDto
 import com.boogle.boogle.book.domain.Book
 import com.boogle.boogle.book.domain.Category
 import org.springframework.batch.infrastructure.item.ItemProcessor
 
-class AladinPagingItemProcessor : ItemProcessor<AladinBookItemDto, Book> {
+class AladinBookItemProcessor : ItemProcessor<AladinBookItemDto, Book> {
 
     override fun process(dto: AladinBookItemDto): Book? {
         val isbn13 = dto.isbn13?.trim()
