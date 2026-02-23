@@ -73,17 +73,21 @@ public class BookSearchEsImpl implements BookSearchService {
                 break;
         }
 
-        // 가중치 + 오타교정 + 하이라이팅
+        // 가중치 + 오타교정 + 하이라이팅 + 초성 검색
         NativeQuery query = NativeQuery.builder()
                 .withQuery(q -> q.bool(b -> {
 
-                    // --- 동적 검색 필드 결정 로직 ---
+                    // 동적 검색 필드 결정 로직
                     List<String> targetFields = new ArrayList<>();
 
                     // 프론트에서 넘어온 searchConditions(title, author, publisher)가 있는지 확인
                     if (request.searchConditions() != null && !request.searchConditions().isEmpty()) {
                         for (String cond : request.searchConditions()) {
-                            if (cond.equals("title")) targetFields.add("title^4.0");
+                            if (cond.equals("title")) {
+                                targetFields.add("title^4.0");
+                                targetFields.add("titleChosung^3.0"); // 초성 필드
+                                targetFields.add("title.suggest^2.0"); // 자동완성 필드
+                            }
                             if (cond.equals("author")) targetFields.add("author^1.5");
                             if (cond.equals("publisher")) targetFields.add("publisher");
                         }
@@ -91,7 +95,8 @@ public class BookSearchEsImpl implements BookSearchService {
 
                     // 만약 체크박스를 하나도 안 선택했다면 기본 필드 전체 검색
                     if (targetFields.isEmpty()) {
-                        targetFields = List.of("title^4.0", "author^1.5", "publisher", "description");
+                        targetFields = List.of("title^4.0", "titleChosung^3.0",
+                                "title.suggest^2.0","author^1.5", "publisher", "description");
                     }
 
                     // 검색 로직
@@ -255,8 +260,10 @@ public class BookSearchEsImpl implements BookSearchService {
                 }).collect(Collectors.toList());
 
         return new PageImpl<>(bookSearchList, pageable, searchHits.getTotalHits());
-
     }
+
+
+
     public List<SuggestionResponse> getSuggestions(String keyword) {
         String cleanKeyword = keyword.trim().toLowerCase(); // 공백 제거
         if (cleanKeyword.isEmpty()) return List.of(); // 빈 리스트시 반환
