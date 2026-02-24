@@ -25,36 +25,38 @@ class SecurityConfig (
     }
 
     // 개발용
+//    @Bean
+//    fun filterChain(http: HttpSecurity): SecurityFilterChain {
+//        http.csrf { it.disable() }
+//            .cors {}
+//            .authorizeHttpRequests { auth -> auth.anyRequest().permitAll() }
+//        return http.build()
+//    }
+
+    // 배포용
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
         http.csrf { it.disable() }
             .cors {}
-            .authorizeHttpRequests { auth -> auth.anyRequest().permitAll() }
+            .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+            .authorizeHttpRequests { auth ->
+                auth
+                    .requestMatchers("/admin/login").permitAll()
+                    .requestMatchers("/admin/**").hasRole("ADMIN")
+                    .anyRequest().permitAll()
+            }
+            .addFilterBefore(
+                JwtAuthenticationFilter(jwtProvider),
+                UsernamePasswordAuthenticationFilter::class.java
+            )
         return http.build()
     }
-
-    // 배포용
-//    @Bean
-//    fun filterChain(http: HttpSecurity): SecurityFilterChain {
-//        http.csrf { it.disable() }
-//            .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
-//            .authorizeHttpRequests { auth ->
-//                auth
-//                    .requestMatchers("/admin/login").permitAll()
-//                    .requestMatchers("/admin/**").hasRole("ADMIN")
-//                    .anyRequest().permitAll()
-//            }
-//            .addFilterBefore(
-//                JwtAuthenticationFilter(jwtProvider),
-//                UsernamePasswordAuthenticationFilter::class.java
-//            )
-//        return http.build()
-//    }
 
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val config = CorsConfiguration()
         config.addAllowedOrigin("http://localhost:3000")
+        config.addAllowedOrigin("https://boogle.r-e.kr")
         config.addAllowedMethod("*")
         config.addAllowedHeader("*")
         config.allowCredentials = true
