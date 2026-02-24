@@ -11,6 +11,12 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        # --- 더미용 추가! ---
+        jdbc:
+          batch_size: 1000
+        order_inserts: true
+        order_updates: true
+        # ------------------
     show-sql: false
 
 logging:

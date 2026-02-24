@@ -170,4 +170,14 @@ public class Book {
         // category는 Writer에서 managed 엔티티로 교체하는 흐름 유지
     }
 
+    /**
+     * Step 2(fulldescription 보강)에서 사용.
+     *
+     알라딘 ItemLookUp API로 가져온 전체 설명글로 교체합니다.
+     */
+    public void enrichDescription(String fullDescription) {
+        if (fullDescription != null && !fullDescription.isBlank()) {
+            this.description = fullDescription;
+        }
+    }
 }

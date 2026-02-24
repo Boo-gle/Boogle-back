@@ -29,4 +29,8 @@ public interface BookRepository extends JpaRepository<Book, Long> {
     Page<Book> findByUpdatedAtGreaterThanOrderByUpdatedAtAsc(Instant lastSyncTime, Pageable pageable);
     List<Book> findAllByStandardIdIn(Collection<String> standardIds);
 
+    /** Step 1: ISBN 중복 체크용 */
+    boolean existsByStandardId(String standardId);
+    /** Step 2, 3: 티어별 카테고리 ID 목록으로 도서 조회 */
+    List<Book> findByCategoryIdIn(List<Integer> categoryIds);
 }
