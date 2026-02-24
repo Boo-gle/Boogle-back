@@ -97,7 +97,7 @@ public class BookSearchEsImpl implements BookSearchService {
                     if (targetFields.isEmpty()) {
                         targetFields = List.of("title^4.0", "titleChosung^3.0",
                                 "title.suggest^2.0","author^1.5", "publisher", "description");
-                    }
+                   }
 
                     // 검색 로직
                     b.should(s -> s.term(t -> t
