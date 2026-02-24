@@ -39,8 +39,6 @@ public class BookSearchDbImpl implements BookSearchService {
         boolean isLowQuality = (totalHits == 0) || (totalHits < 3);
 
         if (bookPage.isEmpty()) {
-            String keyword = request.keyword().trim();
-            long totalHits = bookPage.getTotalElements();
 
             // 로그 로직
             searchLogger.warn(
