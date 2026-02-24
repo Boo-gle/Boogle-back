@@ -32,6 +32,7 @@ services:
     volumes:
       - esdata:/usr/share/elasticsearch/data
       - ./synonyms.txt:/usr/share/elasticsearch/config/synonyms.txt
+      - ./user_dic.txt:/usr/share/elasticsearch/config/user_dic.txt
 
   # 3. 데이터 시각화 도구 (Kibana)
   kibana:
