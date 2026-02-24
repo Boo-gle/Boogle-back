@@ -8,6 +8,8 @@ import com.boogle.boogle.book.api.dto.BookSearchRequest;
 import com.boogle.boogle.book.api.dto.BookSearchResponse;
 import com.boogle.boogle.search.application.LowQualityKeywordDailyService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +26,8 @@ public class BookSearchDbImpl implements BookSearchService {
 
     private final LowQualityKeywordDailyService lowQualityKeywordDailyService;
 
+    private static final Logger searchLogger = LoggerFactory.getLogger("SEARCH_FAILURE");
+
     @Override
     public Page<BookSearchResponse> search(BookSearchRequest request) {
 
@@ -31,7 +35,15 @@ public class BookSearchDbImpl implements BookSearchService {
         String keyword = request.keyword().trim();
         Page<Book> bookPage = bookRepository.searchByKeyword(keyword, pageRequest);
 
+        long totalHits = bookPage.getTotalElements();
+        boolean isLowQuality = (totalHits == 0) || (totalHits < 3);
+
         if (bookPage.isEmpty()) {
+            searchLogger.warn(
+                    "event=SEARCH_FAIL keyword={} totalHits={} source=DB",
+                    keyword, totalHits
+            );
+
             lowQualityKeywordDailyService.recordLowQualityKeyword(keyword, null);
         }
 
