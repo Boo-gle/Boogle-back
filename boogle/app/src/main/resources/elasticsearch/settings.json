@@ -19,7 +19,13 @@
       },
       "nori_mixed_tokenizer": {
         "type": "nori_tokenizer",
-        "decompound_mode": "mixed"
+        "decompound_mode": "mixed",
+        "user_dictionary": "user_dic.txt"
+      },
+      "nori_none_tokenizer": {
+        "type": "nori_tokenizer",
+        "decompound_mode": "none",
+        "user_dictionary": "user_dic.txt"
       }
     },
     "filter": {
@@ -57,6 +63,15 @@
           "lowercase",
           "nori_posfilter",
           "synonym_graph_filter"
+        ]
+      },
+      "korean_nori_none_analyzer": {
+        "type":"custom",
+        "tokenizer": "nori_none_tokenizer",
+        "filter": [
+          "lowercase",
+          "nori_readingform",
+          "nori_posfilter"
         ]
       }
     }
