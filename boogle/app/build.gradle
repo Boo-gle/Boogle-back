@@ -61,6 +61,11 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testImplementation 'com.h2database:h2'
+
+    // --- QueryDSL (Spring Boot 3.x / Jakarta) ---
+    implementation 'com.querydsl:querydsl-jpa:5.0.0:jakarta'
+
+    kapt "com.querydsl:querydsl-apt:5.0.0:jakarta"
 }
 
 kapt {

@@ -11,7 +11,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
-public interface BookRepository extends JpaRepository<Book, Long> {
+public interface BookRepository extends JpaRepository<Book, Long>, BookRepositoryCustom {
 
     @Query("""
         select b

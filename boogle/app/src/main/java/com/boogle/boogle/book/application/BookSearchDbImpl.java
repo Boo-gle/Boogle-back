@@ -29,20 +29,26 @@ public class BookSearchDbImpl implements BookSearchService {
 
         PageRequest pageRequest = PageRequest.of(request.page(), request.size());
         String keyword = request.keyword().trim();
-        Page<Book> bookPage = bookRepository.searchByKeyword(keyword, pageRequest);
+        Page<Book> bookPage = bookRepository.searchBooks(request, pageRequest);
 
         if (bookPage.isEmpty()) {
-            lowQualityKeywordDailyService.recordLowQualityKeyword(keyword, null);
+            lowQualityKeywordDailyService.recordLowQualityKeyword(request.keyword().trim(), null);
         }
 
         return bookPage.map(book -> BookSearchResponse.builder()
-                        .id(book.getId())
-                        .title(book.getTitle())
-                        .author(book.getAuthor())
-                        .publisher(book.getPublisher())
-                        .thumbnailUrl(book.getThumbnailUrl())
-                        .price(book.getPrice())
-                        .build());
+                .id(book.getId())
+                .title(book.getTitle())
+                .author(book.getAuthor())
+                .publisher(book.getPublisher())
+                .thumbnailUrl(book.getThumbnailUrl())
+                .price(book.getPrice())
+                .description(book.getDescription())
+                .categoryDepth2(book.getCategory().getCategoryDepth2())
+                .isbn(book.getStandardId())
+                .publishedDate(book.getPublishedDate() != null ? book.getPublishedDate().toString() : null)
+                .mallType(book.getCategory().getMallType())
+                .productType(book.getProductType() != null ? book.getProductType().name() : null)
+                .build());
     }
 
     @Override
