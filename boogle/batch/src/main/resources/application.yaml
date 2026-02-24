@@ -28,9 +28,12 @@ spring:
       enabled: true # jenkins로 해당 잡을 실행하려면 enabled의 값이 true여야 함
 
 logging:
+  config: classpath:logback-spring.xml # 로그백 설정 파일 위치 지정
   level:
     org.hibernate.SQL: debug
     # org.hibernate.orm.jdbc.bind: trace # 바인딩 파라미터 값 확인하고 싶을 때 켜기
+    org.springframework.batch: info
+    # 배치 실행 흐름을 보기 위해 추가
 
 management:
   health:

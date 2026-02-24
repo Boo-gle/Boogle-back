@@ -14,6 +14,8 @@ import com.boogle.boogle.book.api.dto.SuggestionResponse;
 import com.boogle.boogle.book.domain.document.BookDocument;
 import com.boogle.boogle.search.application.LowQualityKeywordDailyService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -44,8 +46,13 @@ public class BookSearchEsImpl implements BookSearchService {
 
     private final LowQualityKeywordDailyService lowQualityKeywordDailyService;
 
+    private static final Logger searchLogger = LoggerFactory.getLogger("SEARCH_FAILURE");
+
     @Override
     public Page<BookSearchResponse> search(BookSearchRequest request) {
+        // log - 검색 시간 측정
+        long startTime = System.currentTimeMillis();
+
         // 페이징
         Pageable pageable = PageRequest.of(request.page(), request.size());
 
@@ -192,6 +199,13 @@ public class BookSearchEsImpl implements BookSearchService {
         // BookDocument 타입으로 ES에 보내기
         SearchHits<BookDocument> searchHits = elasticsearchOperations.search(query, BookDocument.class);
 
+        // log - 응답 시간 계산 및 느린 검색 경고 로그
+        long duration = System.currentTimeMillis() - startTime;
+        if(duration > 1000) {
+            searchLogger.warn("event=SLOW_SEARCH keyword={} duration={}ms threshold=1000", request.keyword(), duration);
+        }
+
+
         // 검색 결과가 0건일 때 실패어 기록
         if (searchHits.getTotalHits() == 0) {
             String keyword = request.keyword().trim();
@@ -215,9 +229,16 @@ public class BookSearchEsImpl implements BookSearchService {
             // 상황 A: 검색 결과가 0건일 때
             // 상황 B: 결과는 있지만 품질이 너무 낮을 때 (예: 결과가 3건 미만)
             long totalHits = searchHits.getTotalHits();
-            boolean isLowQuality = (totalHits == 0) || (totalHits < 3);
+            boolean isLowQuality = (totalHits < 3);
 
             if (isLowQuality) {
+
+                //log
+                searchLogger.warn(
+                        "event=SEARCH_FAIL keyword={} totalHits={} duration={}ms source=ES",
+                        keyword, totalHits, duration
+                );
+
                 // 원본 검색어와 ES가 찾은 추천어를 DB에 쌓음
                 lowQualityKeywordDailyService.recordLowQualityKeyword(keyword, esSuggestedKeyword);
             }
