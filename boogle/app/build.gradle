@@ -77,3 +77,11 @@ kapt {
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
 }
+
+bootJar {
+    enabled = true
+}
+
+jar {
+    enabled = false
+}
