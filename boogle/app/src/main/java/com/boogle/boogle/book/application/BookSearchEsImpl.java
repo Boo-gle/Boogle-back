@@ -2,6 +2,7 @@ package com.boogle.boogle.book.application;
 
 import co.elastic.clients.elasticsearch._types.SuggestMode;
 import co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
+import co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import co.elastic.clients.elasticsearch.core.search.FieldSuggester;
 import co.elastic.clients.elasticsearch.core.search.StringDistance;
@@ -85,9 +86,8 @@ public class BookSearchEsImpl implements BookSearchService {
 
                     String keyword = request.keyword().trim();
 
-                    // -----------------------------
-                    // 1️⃣ 검색 대상 필드 활성화 결정
-                    // -----------------------------
+
+                    // ️검색 대상 필드 활성화 결정
                     boolean searchTitle = false;
                     boolean searchAuthor = false;
                     boolean searchPublisher = false;
@@ -103,22 +103,36 @@ public class BookSearchEsImpl implements BookSearchService {
                         searchPublisher = true;
                     }
 
-                    // -----------------------------
-                    // 2️⃣ EXACT MATCH (최상위 우선순위)
-                    // -----------------------------
+
+                    // EXACT MATCH (최상위 우선순위)
                     if (searchTitle) {
                         b.should(s -> s.term(t -> t
                                 .field("title.keyword")
                                 .value(keyword)
-                                .boost(2000.0F)
+                                .boost(8000.0F)
                         ));
                     }
 
                     if (searchAuthor) {
+                        // 정확 매칭
                         b.should(s -> s.term(t -> t
                                 .field("author.keyword")
                                 .value(keyword)
-                                .boost(1000.0F)
+                                .boost(2100.0F)
+                        ));
+
+                        // 부분 검색 (authorSuggest)
+                        b.should(s -> s.match(m -> m
+                                .field("author.authorSuggest")
+                                .query(keyword)
+                                .boost(1200.0F)
+                        ));
+
+                        // raw 필드 PHRASE MATCH
+                        b.should(s -> s.matchPhrase(mp -> mp
+                                .field("author.raw")
+                                .query(keyword)
+                                .boost(2000.0F)
                         ));
                     }
 
@@ -130,44 +144,41 @@ public class BookSearchEsImpl implements BookSearchService {
                         ));
                     }
 
-                    // -----------------------------
-                    // 3️⃣ PHRASE MATCH (decompound none)
-                    // -----------------------------
+
+                    // PHRASE MATCH (decompound none)
                     if (searchTitle) {
                         b.should(s -> s.matchPhrase(mp -> mp
                                 .field("title.raw")
                                 .query(keyword)
-                                .boost(800.0F)
+                                .boost(5000.0F)
                         ));
                     }
 
                     if (searchAuthor) {
-                        b.should(s -> s.matchPhrasePrefix(mp -> mp
-                                .field("author.raw")
+                        b.should(s -> s.matchPhrase(mp -> mp
+                                .field("author.raw") // Keyword 분석기 필드 사용
                                 .query(keyword)
-                                .boost(800.0F)
+                                .boost(200.0F)
                         ));
                     }
 
-                    // -----------------------------
-                    // 4️⃣ 초성 검색 (autocomplete analyzer 기반)
-                    // -----------------------------
+
+                    // 초성 검색 (autocomplete analyzer 기반)
+
                     b.should(s -> s.match(m -> m
                             .field("titleChosung")
                             .query(keyword)
                             .boost(300.0F)
                     ));
 
-                    // -----------------------------
-                    // 5️⃣ 일반 매칭 (형태소 + fuzzy 허용)
-                    // -----------------------------
+
+                    // 일반 매칭 (핵심 필드만!)
+
                     List<String> generalFields = new ArrayList<>();
 
                     if (searchTitle) generalFields.add("title^120.0");
-                    if (searchAuthor) generalFields.add("author^60.0");
                     if (searchPublisher) generalFields.add("publisher^30.0");
 
-                    generalFields.add("description^3.0"); // 보조 필드
 
                     b.should(s -> s.multiMatch(mm -> mm
                             .query(keyword)
@@ -176,6 +187,28 @@ public class BookSearchEsImpl implements BookSearchService {
                             .tieBreaker(0.1)
                             .fuzziness(keyword.length() <= 2 ? "0" : "AUTO")
                     ));
+
+                    if (searchAuthor) {
+                        b.should(s -> s.match(m -> m
+                                .field("author")
+                                .query(keyword)
+                                .operator(Operator.And) // "카", "자바", "나"가 다 있어야 점수 부여
+                                .boost(5.0F) // 점수를 낮게 설정해서 제목 매칭을 방해하지 않게 함
+                        ));
+                    }
+
+                    // 설명 필드 격리
+                    // 전체 검색이거나, 특별히 설명 필드를 포함하는 조건일 때만 동작하게
+                    if (request.searchConditions() == null || request.searchConditions().isEmpty()) {
+                        b.should(s -> s.match(m -> m
+                                .field("description")
+                                .query(keyword)
+                                .boost(60.0F)
+                                .minimumShouldMatch("100%") // '자바'가 정확히 단어로 존재할 때만!
+                        ));
+                    }
+
+
 
                     b.minimumShouldMatch("1");
 
