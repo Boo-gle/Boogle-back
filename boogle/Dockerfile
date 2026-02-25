@@ -4,7 +4,7 @@
 # RUN #elasticsearch-plugin install analysis-nori
 
 # ---------- 1) Build Stage ----------
-FROM gradle:8.5-jdk17 AS build
+FROM gradle:9.3-jdk17 AS build
 WORKDIR /app
 
 COPY gradle ./gradle
