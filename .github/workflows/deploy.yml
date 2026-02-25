@@ -27,14 +27,14 @@ jobs:
 
       - name: Build & Push App
         run: |
-          docker build --target app-runtime -t $ECR_REGISTRY/$APP_REPO:$IMAGE_TAG .
+          docker build --target app-runtime -t $ECR_REGISTRY/$APP_REPO:$IMAGE_TAG -f boogle/Dockerfile boogle
           docker push $ECR_REGISTRY/$APP_REPO:$IMAGE_TAG
           docker tag  $ECR_REGISTRY/$APP_REPO:$IMAGE_TAG $ECR_REGISTRY/$APP_REPO:latest
           docker push $ECR_REGISTRY/$APP_REPO:latest
 
       - name: Build & Push Batch
         run: |
-          docker build --target batch-runtime -t $ECR_REGISTRY/$BATCH_REPO:$IMAGE_TAG .
+          docker build --target batch-runtime -t $ECR_REGISTRY/$BATCH_REPO:$IMAGE_TAG -f boogle/Dockerfile boogle
           docker push $ECR_REGISTRY/$BATCH_REPO:$IMAGE_TAG
           docker tag  $ECR_REGISTRY/$BATCH_REPO:$IMAGE_TAG $ECR_REGISTRY/$BATCH_REPO:latest
           docker push $ECR_REGISTRY/$BATCH_REPO:latest
@@ -46,11 +46,11 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -e
-            
+            set -euo pipefail
+
             test -f /home/ubuntu/boogle/docker-compose.prod.yml
             test -f /home/ubuntu/boogle/.env.prod
-            
+
             cd /home/ubuntu/boogle
 
             aws ecr get-login-password --region ap-northeast-2 \
