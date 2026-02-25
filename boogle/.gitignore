@@ -47,5 +47,5 @@ application-local.yaml
 logs/
 
 ### jmeter 추적 제외 ###
-.csv
-.jmx
+jmeter/*.csv
+jmeter/*.jmx
