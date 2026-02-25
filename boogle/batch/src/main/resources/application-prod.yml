@@ -1,0 +1,61 @@
+spring:
+  profiles:
+    active: prod
+
+  main:
+    web-application-type: none
+
+  application:
+    name: boogle-batch
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: false
+    show-sql: false
+
+  batch:
+    jdbc:
+      initialize-schema: never
+    job:
+      enabled: true
+
+  # ES Repository도 스위치에 맞춰 같이 on/off
+  data:
+    elasticsearch:
+      uris: ${SPRING_ELASTICSEARCH_URIS:http://localhost:9200}
+      repositories:
+        enabled: ${SEARCH_ES_ENABLED:false}
+
+  elasticsearch:
+    uris: ${SPRING_ELASTICSEARCH_URIS}
+    connection-timeout: 5s
+    socket-timeout: 3s
+
+search:
+  es:
+    enabled: ${SEARCH_ES_ENABLED:false}
+
+management:
+  health:
+    elasticsearch:
+      enabled: ${SEARCH_ES_ENABLED:false}
+
+logging:
+  level:
+    org.springframework.batch: info
+    org.hibernate.SQL: debug
+    org.springframework.data.elasticsearch.client.WIRE: trace
+
+# (예) 외부 API 키는 배포에서 환경변수로
+aladin:
+  api:
+    ttb-key: ${ALADIN_API_TTB_KEY:}

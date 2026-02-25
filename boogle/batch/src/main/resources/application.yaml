@@ -1,12 +1,12 @@
 spring:
   profiles:
-    active: local
+    default: local
 
   main:
     web-application-type: none
 
   application:
-    name: boogle
+    name: boogle-app
 
   data:
     elasticsearch:

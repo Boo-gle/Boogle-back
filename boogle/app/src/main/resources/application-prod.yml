@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: boogle
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          batch_size: 1000
+        order_inserts: true
+        order_updates: true
+    show-sql: false
+
+  elasticsearch:
+    uris: ${SPRING_ELASTICSEARCH_URIS}
+    connection-timeout: 5s
+    socket-timeout: 3s
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.springframework.data.elasticsearch.client.WIRE: trace
+    # org.hibernate.orm.jdbc.bind: trace
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  health:
+    elasticsearch:
+      enabled: true # ES 헬스체크 활성화
+
+search:
+  es:
+    enabled: true

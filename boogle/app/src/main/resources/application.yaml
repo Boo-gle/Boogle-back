@@ -1,6 +1,6 @@
 spring:
   profiles:
-    active: local
+    default: local
 
   application:
     name: boogle
