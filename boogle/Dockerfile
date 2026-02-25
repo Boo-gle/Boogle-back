@@ -1,20 +1,14 @@
-# FROM docker.elastic.co/elasticsearch/elasticsearch:9.2.3
-
-# 한글 검색을 위한 Nori 플러그인 설치
-# RUN #elasticsearch-plugin install analysis-nori
-
 # ---------- 1) Build Stage ----------
 FROM gradle:9.3-jdk17 AS build
 WORKDIR /app
 
-COPY gradle ./gradle
-COPY gradlew gradlew.bat settings.gradle build.gradle ./
+# (중요) 멀티모듈은 부분 COPY로 꼬이기 쉬우니, 아예 전체를 복사해서 경로/구조를 100% 일치시킵니다.
+COPY . .
+
 RUN chmod +x ./gradlew
 
-COPY app ./app
-COPY batch ./batch
-
-RUN ./gradlew :app:bootJar :batch:bootJar -x test
+# (중요) compileKotlin만 하지 말고, 실제 산출물(bootJar)까지 만들어야 :app 포함 빌드 그래프가 확실히 잡힙니다.
+RUN ./gradlew :app:bootJar :batch:bootJar --no-daemon --stacktrace --info --console=plain -x test
 
 
 # ---------- 2) App Runtime Stage ----------
