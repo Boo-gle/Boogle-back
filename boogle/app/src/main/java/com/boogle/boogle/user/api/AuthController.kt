@@ -1,6 +1,7 @@
 package com.boogle.boogle.user.api
 
 import com.boogle.boogle.user.api.dto.LoginRequest
+import com.boogle.boogle.user.api.dto.LoginResponse
 import com.boogle.boogle.user.application.UserService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -16,10 +17,16 @@ class AuthController (
 ){
 
     @PostMapping("/login")
-    fun login(@RequestBody request: LoginRequest): ResponseEntity<Map<String, String>> {
-        val token = userService.login(request.loginId, request.password)
+    fun login(@RequestBody request: LoginRequest): ResponseEntity<LoginResponse> {
+        val loginResponse = userService.login(request.loginId, request.password)
 
-        return ResponseEntity.ok(mapOf("accessToken" to token))
+
+        return ResponseEntity.ok(loginResponse)
+    }
+
+    @PostMapping("/logout")
+    fun logout(): ResponseEntity<Map<String, String>> {
+        return ResponseEntity.ok(mapOf("message" to "로그아웃 성공"))
     }
 
     @GetMapping("/test")
