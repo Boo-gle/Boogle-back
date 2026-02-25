@@ -49,3 +49,11 @@ dependencies {
 allOpen {
     annotation("com.boogle.boogle.batch.common.OpenForProxy")
 }
+
+bootJar {
+    enabled = true
+}
+
+jar {
+    enabled = false
+}
