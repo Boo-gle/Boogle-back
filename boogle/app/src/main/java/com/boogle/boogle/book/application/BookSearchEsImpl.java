@@ -80,46 +80,101 @@ public class BookSearchEsImpl implements BookSearchService {
                 break;
         }
 
-        // 가중치 + 오타교정 + 하이라이팅 + 초성 검색
         NativeQuery query = NativeQuery.builder()
                 .withQuery(q -> q.bool(b -> {
 
-                    // 동적 검색 필드 결정 로직
-                    List<String> targetFields = new ArrayList<>();
+                    String keyword = request.keyword().trim();
 
-                    // 프론트에서 넘어온 searchConditions(title, author, publisher)가 있는지 확인
+                    // -----------------------------
+                    // 1️⃣ 검색 대상 필드 활성화 결정
+                    // -----------------------------
+                    boolean searchTitle = false;
+                    boolean searchAuthor = false;
+                    boolean searchPublisher = false;
+
                     if (request.searchConditions() != null && !request.searchConditions().isEmpty()) {
-                        for (String cond : request.searchConditions()) {
-                            if (cond.equals("title")) {
-                                targetFields.add("title^4.0");
-                                targetFields.add("titleChosung^3.0"); // 초성 필드
-                                targetFields.add("title.suggest^2.0"); // 자동완성 필드
-                            }
-                            if (cond.equals("author")) targetFields.add("author^1.5");
-                            if (cond.equals("publisher")) targetFields.add("publisher");
-                        }
+                        searchTitle = request.searchConditions().contains("title");
+                        searchAuthor = request.searchConditions().contains("author");
+                        searchPublisher = request.searchConditions().contains("publisher");
+                    } else {
+                        // 아무것도 선택 안하면 전체 검색
+                        searchTitle = true;
+                        searchAuthor = true;
+                        searchPublisher = true;
                     }
 
-                    // 만약 체크박스를 하나도 안 선택했다면 기본 필드 전체 검색
-                    if (targetFields.isEmpty()) {
-                        targetFields = List.of("title^4.0", "titleChosung^3.0",
-                                "title.suggest^2.0","author^1.5", "publisher", "description");
-                   }
+                    // -----------------------------
+                    // 2️⃣ EXACT MATCH (최상위 우선순위)
+                    // -----------------------------
+                    if (searchTitle) {
+                        b.should(s -> s.term(t -> t
+                                .field("title.keyword")
+                                .value(keyword)
+                                .boost(2000.0F)
+                        ));
+                    }
 
-                    // 검색 로직
-                    b.should(s -> s.term(t -> t
-                            .field("title.keyword")
-                            .value(request.keyword().trim())
-                            .boost(10.0F)
+                    if (searchAuthor) {
+                        b.should(s -> s.term(t -> t
+                                .field("author.keyword")
+                                .value(keyword)
+                                .boost(1000.0F)
+                        ));
+                    }
+
+                    if (searchPublisher) {
+                        b.should(s -> s.term(t -> t
+                                .field("publisher.keyword")
+                                .value(keyword)
+                                .boost(500.0F)
+                        ));
+                    }
+
+                    // -----------------------------
+                    // 3️⃣ PHRASE MATCH (decompound none)
+                    // -----------------------------
+                    if (searchTitle) {
+                        b.should(s -> s.matchPhrase(mp -> mp
+                                .field("title.raw")
+                                .query(keyword)
+                                .boost(800.0F)
+                        ));
+                    }
+
+                    if (searchAuthor) {
+                        b.should(s -> s.matchPhrasePrefix(mp -> mp
+                                .field("author.raw")
+                                .query(keyword)
+                                .boost(800.0F)
+                        ));
+                    }
+
+                    // -----------------------------
+                    // 4️⃣ 초성 검색 (autocomplete analyzer 기반)
+                    // -----------------------------
+                    b.should(s -> s.match(m -> m
+                            .field("titleChosung")
+                            .query(keyword)
+                            .boost(300.0F)
                     ));
 
-                    List<String> finalTargetFields = targetFields;
+                    // -----------------------------
+                    // 5️⃣ 일반 매칭 (형태소 + fuzzy 허용)
+                    // -----------------------------
+                    List<String> generalFields = new ArrayList<>();
+
+                    if (searchTitle) generalFields.add("title^120.0");
+                    if (searchAuthor) generalFields.add("author^60.0");
+                    if (searchPublisher) generalFields.add("publisher^30.0");
+
+                    generalFields.add("description^3.0"); // 보조 필드
 
                     b.should(s -> s.multiMatch(mm -> mm
-                            .query(request.keyword().trim())
-                            .fields(finalTargetFields)
+                            .query(keyword)
+                            .fields(generalFields)
                             .type(TextQueryType.BestFields)
-                            .fuzziness("AUTO")
+                            .tieBreaker(0.1)
+                            .fuzziness(keyword.length() <= 2 ? "0" : "AUTO")
                     ));
 
                     b.minimumShouldMatch("1");
@@ -154,7 +209,7 @@ public class BookSearchEsImpl implements BookSearchService {
                     // 카테고리 필터
                     if (request.categoryDepth2() != null && !request.categoryDepth2().isEmpty()) {
                         b.filter(f -> f.term(t -> t
-                                .field("categoryDepth2.keyword")
+                                .field("categoryDepth2")
                                 .value(request.categoryDepth2())
                         ));
                     }
