@@ -1,0 +1,99 @@
+{
+  "properties": {
+    "title": {
+      "type": "text",
+      "analyzer": "korean_nori_index_analyzer",
+      "search_analyzer": "korean_nori_search_analyzer",
+      "fields": {
+        "raw": {
+          "type": "text",
+          "analyzer": "korean_nori_none_analyzer",
+          "search_analyzer": "korean_nori_none_analyzer"
+        },
+        "suggest": {
+          "type": "text",
+          "analyzer": "autocomplete_analyzer",
+          "search_analyzer": "standard"
+        },
+        "keyword": {
+          "type": "keyword",
+          "normalizer": "lowercase_normalizer"
+        }
+      }
+    },
+    "titleChosung": {
+      "type": "text",
+      "analyzer": "autocomplete_analyzer",
+      "search_analyzer": "standard"
+    },
+    "author": {
+      "type": "text",
+      "analyzer": "korean_nori_index_analyzer",
+      "search_analyzer": "korean_nori_search_analyzer",
+      "fields": {
+        "raw": {
+          "type": "text",
+          "analyzer": "author_raw_analyzer",
+          "search_analyzer": "author_raw_analyzer"
+        },
+        "keyword": {
+          "type": "keyword",
+          "normalizer": "lowercase_normalizer"
+        },
+        "authorSuggest": {
+          "type": "text",
+          "analyzer": "autocomplete_analyzer",
+          "search_analyzer": "standard"
+        }
+      }
+    },
+    "publisher": {
+      "type": "text",
+      "analyzer": "korean_nori_index_analyzer",
+      "search_analyzer": "korean_nori_search_analyzer",
+      "fields": {
+        "keyword": {
+          "type": "keyword",
+          "normalizer": "lowercase_normalizer"
+        }
+      }
+    },
+    "description": {
+      "type": "text",
+      "analyzer": "korean_nori_index_analyzer",
+      "search_analyzer": "korean_nori_search_analyzer",
+      "term_vector": "with_positions_offsets",
+      "norms": false
+    },
+    "price": {
+      "type": "integer"
+    },
+    "publishedDate": {
+      "type": "date",
+      "format": "yyyy-MM-dd"
+    },
+    "categoryId": {
+      "type": "integer"
+    },
+    "productType": {
+      "type": "keyword"
+    },
+    "mallType": {
+      "type": "keyword"
+    },
+    "isbn": {
+      "type": "keyword"
+    },
+    "thumbnailUrl": {
+      "type": "keyword",
+      "index": false
+    },
+    "categoryDepth2": {
+      "type": "keyword"
+    },
+    "updatedAt": {
+      "type": "date",
+      "format": "epoch_millis||strict_date_optional_time"
+    }
+  }
+}

@@ -1,0 +1,84 @@
+  {
+    "index": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    },
+    "analysis": {
+      "normalizer": {
+        "lowercase_normalizer": {
+          "type": "custom",
+          "filter": ["lowercase"]
+        }
+      },
+      "tokenizer": {
+        "autocomplete_tokenizer": {
+          "type": "edge_ngram",
+          "min_gram": 1,
+          "max_gram": 20,
+          "token_chars": ["letter", "digit"]
+        },
+        "nori_mixed_tokenizer": {
+          "type": "nori_tokenizer",
+          "decompound_mode": "mixed",
+          "user_dictionary": "user_dic.txt"
+        },
+        "nori_none_tokenizer": {
+          "type": "nori_tokenizer",
+          "decompound_mode": "none",
+          "user_dictionary": "user_dic.txt"
+        }
+      },
+      "filter": {
+        "nori_posfilter": {
+          "type": "nori_part_of_speech",
+          "stoptags": [
+            "EP", "EF", "EC", "ETN", "ETM", "IC", "JKS", "JKC", "JKG", "JKO", "JKB", "JKV", "JKQ", "JX", "JC", "MAG", "MAJ", "MM", "SP", "SSC", "SSO", "SC", "SE", "XPN", "XSA", "XSN", "XSV", "UNA", "NA", "VSV"
+          ]
+        },
+        "synonym_graph_filter": {
+          "type": "synonym_graph",
+          "synonyms_path": "synonyms.txt"
+        }
+      },
+      "analyzer": {
+        "autocomplete_analyzer": {
+          "type": "custom",
+          "tokenizer": "autocomplete_tokenizer",
+          "filter": ["lowercase"]
+        },
+        "korean_nori_index_analyzer": {
+          "type": "custom",
+          "tokenizer": "nori_mixed_tokenizer",
+          "filter": [
+            "nori_readingform",
+            "lowercase",
+            "nori_posfilter"
+          ]
+        },
+        "korean_nori_search_analyzer": {
+          "type": "custom",
+          "tokenizer": "nori_mixed_tokenizer",
+          "filter": [
+            "nori_readingform",
+            "lowercase",
+            "nori_posfilter",
+            "synonym_graph_filter"
+          ]
+        },
+        "korean_nori_none_analyzer": {
+          "type":"custom",
+          "tokenizer": "nori_none_tokenizer",
+          "filter": [
+            "lowercase",
+            "nori_readingform",
+            "nori_posfilter"
+          ]
+        },
+        "author_raw_analyzer": {
+          "type": "custom",
+          "tokenizer": "keyword",
+          "filter": ["lowercase"]
+        }
+      }
+    }
+  }

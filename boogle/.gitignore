@@ -37,3 +37,11 @@ out/
 .vscode/
 
 .env
+
+application-local.yml
+application-local.yaml
+
+
+### 로그 파일 깃 추적 제외 ###
+*.log
+logs/
