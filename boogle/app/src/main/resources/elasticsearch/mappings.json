@@ -31,6 +31,11 @@
       "analyzer": "korean_nori_index_analyzer",
       "search_analyzer": "korean_nori_search_analyzer",
       "fields": {
+        "raw": {
+          "type": "text",
+          "analyzer": "korean_nori_none_analyzer",
+          "search_analyzer": "korean_nori_none_analyzer"
+        },
         "keyword": {
           "type": "keyword",
           "normalizer": "lowercase_normalizer"
