@@ -33,4 +33,12 @@ public interface BookRepository extends JpaRepository<Book, Long>, BookRepositor
     boolean existsByStandardId(String standardId);
     /** Step 2, 3: 티어별 카테고리 ID 목록으로 도서 조회 */
     List<Book> findByCategoryIdIn(List<Integer> categoryIds);
+
+
+    // --- DB에 저장된 ISBN 중 숫자 부분만 추출해서 최대값 가져오기 ---
+    @Query(
+            value = "SELECT MAX(CAST(SUBSTRING(standard_id, 4) AS BIGINT)) FROM books WHERE standard_id LIKE '979%'",
+            nativeQuery = true
+    )
+    Long findMaxStandardIdSuffix();
 }

@@ -235,136 +235,114 @@ public class SeedDataCollectorTest {
         System.out.println("Step 2 완료! 보강: " + enriched + "건");
     }
 
+
+
     // ============================================
-    //  Step 3: 카테고리 내 증식
-    // ============================================
+//  Step 3: 카테고리 내 증식 (비율 유지 버전)
+// ============================================
     private final AtomicLong isbnCounter = new AtomicLong(1);
     @Test
-    @DisplayName("Step 3: 시드 데이터 증식 → 9만건")
+    @DisplayName("Step 3: 시드 데이터 증식 → 비율 유지하며 정확히 2만건 추가")
     void step3_amplify() {
-        String[] prefixes = {
-                "개정판", "2024", "신판", "특별판", "리커버",
-                "완전판", "문고판", "양장", "한정판", "축약판",
-                "증보판", "2023", "2025", "미니북", "합본"
-        };
-        // 티어별 설정: [증식 배수, description 합침 횟수]
-        Map<String, int[]> tierConfig = Map.of(
-                "HEAVY",  new int[]{16, 3},   // 247 × 3 = ~741자
-                "MIDDLE", new int[]{7, 3},    // 150 × 3 = ~450자
-                "MINOR",  new int[]{7, 2}     // 150 × 2 = ~300자
-        );
-        int[][] allTiers = {HEAVY_CIDS, MIDDLE_CIDS, MINOR_CIDS};
+        // 1. 목표 설정
+        int totalToAdd = 20000;
+        long currentTotalCount = bookRepository.count();
+
+        // ISBN 카운터 설정
+        Long maxSuffix = bookRepository.findMaxStandardIdSuffix();
+        isbnCounter.set(maxSuffix != null ? maxSuffix + 1 : 1);
+
+        // 2. 모든 티어의 시드 데이터를 먼저 메모리에 로드
+        int[][] allTierCids = {HEAVY_CIDS, MIDDLE_CIDS, MINOR_CIDS};
+        List<Integer> allCids = Arrays.stream(allTierCids)
+                .flatMapToInt(Arrays::stream)
+                .boxed()
+                .collect(Collectors.toList());
+
+        // [중요] 분모 계산: 리스트에 로드된 모든 시드 데이터의 총 합계를 구함
+        List<Book> allSeedsList = bookRepository.findByCategoryIdIn(allCids);
+        long seedsTotalCount = allSeedsList.size();
+
+        // 카테고리별로 그룹화
+        Map<Category, List<Book>> seedsByCategory = allSeedsList.stream()
+                .collect(Collectors.groupingBy(Book::getCategory));
+
+        System.out.println("현재 시드 총합: " + seedsTotalCount + " | 목표 추가량: " + totalToAdd);
+
+        String[] prefixes = {"개정판", "2024", "신판", "특별판", "리커버", "완전판", "문고판", "양장", "한정판", "축약판", "증보판", "2023", "2025", "미니북", "합본"};
+        Map<String, Integer> tierDescConfig = Map.of("HEAVY", 3, "MIDDLE", 3, "MINOR", 2);
+
+        int actualAddedTotal = 0;
+
+        // 3. 티어 순회 (이미 로드된 데이터 활용)
         String[] tierNames = {"HEAVY", "MIDDLE", "MINOR"};
-        int grandTotal = 0;
-        for (int t = 0; t < allTiers.length; t++) {
+        for (int t = 0; t < allTierCids.length; t++) {
             String tier = tierNames[t];
-            int multiplier = tierConfig.get(tier)[0];
-            int descMergeCount = tierConfig.get(tier)[1];
-            List<Integer> cids = Arrays.stream(allTiers[t])
-                    .boxed().collect(Collectors.toList());
-            Map<Category, List<Book>> seedsByCategory =
-                    bookRepository.findByCategoryIdIn(cids).stream()
-                            .collect(Collectors.groupingBy(Book::getCategory));
-            int tierTotal = 0;
-            System.out.println("\n===== " + tier + " 증식 시작 (×"
-                    + multiplier + ") =====");
+            int descMergeCount = tierDescConfig.get(tier);
+
+            // 해당 티어에 속한 CID 리스트
+            List<Integer> currentTierCids = Arrays.stream(allTierCids[t]).boxed().collect(Collectors.toList());
+
             for (var entry : seedsByCategory.entrySet()) {
+                // 현재 카테고리가 이번 티어에 속하는지 확인
+                if (!currentTierCids.contains(entry.getKey().getId())) continue;
+
                 Category category = entry.getKey();
                 List<Book> seeds = entry.getValue();
-                if (seeds.isEmpty()) continue;
-                int targetCount = seeds.size() * multiplier;
+
+                // [핵심] 이번 카테고리의 몫 계산
+                // 공식: (이 카테고리 시드 수 / 리스트 전체 시드 수) * 20000
+                int categoryQuota = (int) Math.round(((double) seeds.size() / seedsTotalCount) * totalToAdd);
+                if (categoryQuota <= 0) categoryQuota = 1;
+
                 List<Book> batch = new ArrayList<>();
-                for (int i = 0; i < targetCount; i++) {
+                for (int i = 0; i < categoryQuota; i++) {
                     Book base = seeds.get(random.nextInt(seeds.size()));
-                    // --- 1) 제목 변형 ---
-                            String newTitle = prefixes[random.nextInt(prefixes.length)]
-                            + " " + base.getTitle();
-                    // --- 2) Description 합치기 ---
-                    StringBuilder desc = new StringBuilder(
-                            base.getDescription() != null
-                                    ? base.getDescription() : ""
-                    );
+
+                    // --- 1~6번 로직 (제목, 설명, 가격, 날짜, ISBN, 저자) ---
+                    String newTitle = prefixes[random.nextInt(prefixes.length)] + " " + base.getTitle();
+                    StringBuilder desc = new StringBuilder(base.getDescription() != null ? base.getDescription() : "");
                     for (int d = 1; d < descMergeCount; d++) {
                         Book other = seeds.get(random.nextInt(seeds.size()));
-                        if (other.getDescription() != null
-                                && !other.getDescription().isBlank()) {
+                        if (other.getDescription() != null && !other.getDescription().isBlank()) {
                             desc.append(" ").append(other.getDescription());
                         }
                     }
-                    String finalDesc = desc.toString().isBlank()
-                            ? "도서 상세 정보가 준비 중입니다."
-                        : desc.toString();
-                    // --- 3) 가격 ±20% 변동 ---
-                    int basePrice = (base.getPrice() != null && base.getPrice() > 0)
-                            ? base.getPrice() : 15000;
-                    int variance = (int)(basePrice * 0.4 * random.nextDouble())
-                            - (int)(basePrice * 0.2);
+                    String finalDesc = desc.toString().isBlank() ? "도서 상세 정보가 준비 중입니다." : desc.toString();
+                    int basePrice = (base.getPrice() != null && base.getPrice() > 0) ? base.getPrice() : 15000;
+                    int variance = (int)(basePrice * 0.4 * random.nextDouble()) - (int)(basePrice * 0.2);
                     int newPrice = Math.max(1000, basePrice + variance);
-                    // --- 4) 출간일 랜덤 분산 ---
-                            LocalDate baseDate = base.getPublishedDate();
-                    int maxDaysBack = switch (tier) {
-                        case "HEAVY"  -> 365 * 5;   // 최근 5년
-                        case "MIDDLE" -> 365 * 3;   // 최근 3년
-                        default       -> 365 * 8;   // 최근 8년
-                    };
-                    LocalDate newDate = baseDate.minusDays(
-                            random.nextInt(maxDaysBack));
-                    // 2000년 이전 방지 & 미래 날짜 방지
-                    if (newDate.isBefore(LocalDate.of(2000, 1, 1))) {
-                        newDate = LocalDate.of(2000, 1, 1)
-                                .plusDays(random.nextInt(365 * 10));
-                    }
-                    if (newDate.isAfter(LocalDate.now())) {
-                        newDate = LocalDate.now()
-                                .minusDays(random.nextInt(365));
-                    }
-                    // --- 5) 유니크 ISBN (순차 카운터) ---
-                            String newStandardId = "979"
-                            + String.format("%010d", isbnCounter.getAndIncrement());
-                    // --- 6) author 재조합 ---
-                    String authorRaw = base.getAuthor() != null
-                            ? base.getAuthor() + " (지은이)" : "미상 (지은이)";
-                    if (base.getTranslator() != null
-                            && !base.getTranslator().isBlank()) {
-                        authorRaw += ", " + base.getTranslator() + " (옮긴이)";
-                    }
-                    // --- 7) Book 생성 ---
-                    Book amplified = new Book(
-                            category,
-                            newTitle,
-                            newStandardId,
-                            authorRaw,
-                            base.getPublisher(),
-                            newDate.toString(),
-                            finalDesc,
-                            newPrice,
-                            base.getProductType().name(),
-                            base.getThumbnailUrl(),
-                            base.getSeriesId(),
-                            base.getSeriesName()
-                    );
+
+                    LocalDate baseDate = base.getPublishedDate();
+                    int maxDaysBack = tier.equals("HEAVY") ? 365 * 5 : (tier.equals("MIDDLE") ? 365 * 3 : 365 * 8);
+                    LocalDate newDate = baseDate.minusDays(random.nextInt(maxDaysBack));
+                    String newStandardId = "979" + String.format("%010d", isbnCounter.getAndIncrement());
+                    String authorRaw = (base.getAuthor() != null ? base.getAuthor() : "미상") + " (지은이)";
+                    if (base.getTranslator() != null && !base.getTranslator().isBlank()) authorRaw += ", " + base.getTranslator() + " (옮긴이)";
+
+                    // --- 7) Book 생성 및 배치 저장 ---
+                    Book amplified = new Book(category, newTitle, newStandardId, authorRaw, base.getPublisher(),
+                            newDate.toString(), finalDesc, newPrice, base.getProductType().name(),
+                            base.getThumbnailUrl(), base.getSeriesId(), base.getSeriesName());
+
                     batch.add(amplified);
-                    // 1,000건 단위 배치 저장
                     if (batch.size() >= 1000) {
                         bookRepository.saveAll(batch);
                         batch.clear();
                     }
                 }
-                // 남은 건 저장
                 if (!batch.isEmpty()) {
                     bookRepository.saveAll(batch);
                     batch.clear();
                 }
-                tierTotal += targetCount;
+                actualAddedTotal += categoryQuota;
             }
-            grandTotal += tierTotal;
-            System.out.println("===== " + tier + " 증식 완료: "
-                    + tierTotal + "건 =====");
+            System.out.println(tier + " 티어 처리 완료");
         }
-        long dbCount = bookRepository.count();
-        System.out.println("\n Step 3 완료!");
-        System.out.println("증식 건수: " + grandTotal);
-        System.out.println("DB 전체 건수: " + dbCount);
-    }
 
+        System.out.println("\n===== 최종 결과 =====");
+        System.out.println("목표했던 추가 건수: " + totalToAdd);
+        System.out.println("실제 추가된 건수: " + actualAddedTotal);
+        System.out.println("현재 DB 총 건수: " + bookRepository.count());
+    }
 }
