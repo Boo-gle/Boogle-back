@@ -73,6 +73,11 @@
             "nori_readingform",
             "nori_posfilter"
           ]
+        },
+        "author_raw_analyzer": {
+          "type": "custom",
+          "tokenizer": "keyword",
+          "filter": ["lowercase"]
         }
       }
     }

@@ -33,12 +33,17 @@
       "fields": {
         "raw": {
           "type": "text",
-          "analyzer": "korean_nori_none_analyzer",
-          "search_analyzer": "korean_nori_none_analyzer"
+          "analyzer": "author_raw_analyzer",
+          "search_analyzer": "author_raw_analyzer"
         },
         "keyword": {
           "type": "keyword",
           "normalizer": "lowercase_normalizer"
+        },
+        "authorSuggest": {
+          "type": "text",
+          "analyzer": "autocomplete_analyzer",
+          "search_analyzer": "standard"
         }
       }
     },
@@ -57,7 +62,8 @@
       "type": "text",
       "analyzer": "korean_nori_index_analyzer",
       "search_analyzer": "korean_nori_search_analyzer",
-      "term_vector": "with_positions_offsets"
+      "term_vector": "with_positions_offsets",
+      "norms": false
     },
     "price": {
       "type": "integer"
