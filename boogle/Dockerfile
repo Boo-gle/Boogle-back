@@ -14,7 +14,7 @@ RUN chmod +x ./gradlew
 COPY app ./app
 COPY batch ./batch
 
-RUN ./gradlew :batch:compileKotlin --no-daemon --stacktrace --info --console=plain
+RUN ./gradlew :app:bootJar :batch:bootJar -x test
 
 
 # ---------- 2) App Runtime Stage ----------
