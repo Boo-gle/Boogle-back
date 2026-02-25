@@ -41,6 +41,9 @@ dependencies {
     // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+
+    // QueryDSL (JPAQueryFactory 객체를 인식하기 위함)
+    implementation 'com.querydsl:querydsl-jpa:5.0.0:jakarta'
 }
 
 allOpen {
