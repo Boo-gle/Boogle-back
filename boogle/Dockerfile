@@ -1,50 +1,47 @@
-# ---------- 1) Build Stage ----------
+# ---------- Build ----------
 FROM gradle:9.3-jdk17 AS build
 WORKDIR /app
 
-# (중요) 멀티모듈은 부분 COPY로 꼬이기 쉬우니, 아예 전체를 복사해서 경로/구조를 100% 일치시킵니다.
 COPY . .
-
 RUN chmod +x ./gradlew
 
-# (중요) compileKotlin만 하지 말고, 실제 산출물(bootJar)까지 만들어야 :app 포함 빌드 그래프가 확실히 잡힙니다.
-RUN ./gradlew :app:bootJar :batch:bootJar --no-daemon --stacktrace --info --console=plain -x test
+# 앱/배치 둘 다 jar 생성 (테스트 제외)
+RUN ./gradlew :app:bootJar :batch:bootJar --no-daemon --stacktrace --console=plain -x test
 
 
-# ---------- 2) App Runtime Stage ----------
+# ---------- App Runtime ----------
 FROM eclipse-temurin:17-jre AS app-runtime
 WORKDIR /app
 
 COPY --from=build /app/app/build/libs/ /tmp/app-libs/
 
+# plain.jar는 아예 가정하지 않음 (plain 제외한 jar 1개를 선택)
 RUN set -e; \
-  APP_JAR_COUNT="$(find /tmp/app-libs -maxdepth 1 -type f -name '*.jar' ! -name '*-plain.jar' | wc -l)"; \
-  if [ "$APP_JAR_COUNT" -ne 1 ]; then \
-    echo "[ERROR] app jar must be exactly 1 (excluding *-plain.jar). found=$APP_JAR_COUNT"; \
+  APP_JAR="$(find /tmp/app-libs -maxdepth 1 -type f -name '*.jar' ! -name '*-plain.jar' | head -n 1)"; \
+  if [ -z "$APP_JAR" ]; then \
+    echo "[ERROR] app executable jar not found in /tmp/app-libs"; \
     ls -al /tmp/app-libs; \
     exit 1; \
   fi; \
-  APP_JAR_PATH="$(find /tmp/app-libs -maxdepth 1 -type f -name '*.jar' ! -name '*-plain.jar' -print -quit)"; \
-  mv "$APP_JAR_PATH" /app/app.jar
+  cp "$APP_JAR" /app/app.jar
 
 EXPOSE 8080
 ENTRYPOINT ["java","-jar","/app/app.jar"]
 
 
-# ---------- 3) Batch Runtime Stage ----------
+# ---------- Batch Runtime ----------
 FROM eclipse-temurin:17-jre AS batch-runtime
 WORKDIR /app
 
 COPY --from=build /app/batch/build/libs/ /tmp/batch-libs/
 
 RUN set -e; \
-  BATCH_JAR_COUNT="$(find /tmp/batch-libs -maxdepth 1 -type f -name '*.jar' ! -name '*-plain.jar' | wc -l)"; \
-  if [ "$BATCH_JAR_COUNT" -ne 1 ]; then \
-    echo "[ERROR] batch jar must be exactly 1 (excluding *-plain.jar). found=$BATCH_JAR_COUNT"; \
+  BATCH_JAR="$(find /tmp/batch-libs -maxdepth 1 -type f -name '*.jar' ! -name '*-plain.jar' | head -n 1)"; \
+  if [ -z "$BATCH_JAR" ]; then \
+    echo "[ERROR] batch executable jar not found in /tmp/batch-libs"; \
     ls -al /tmp/batch-libs; \
     exit 1; \
   fi; \
-  BATCH_JAR_PATH="$(find /tmp/batch-libs -maxdepth 1 -type f -name '*.jar' ! -name '*-plain.jar' -print -quit)"; \
-  mv "$BATCH_JAR_PATH" /app/batch.jar
+  cp "$BATCH_JAR" /app/batch.jar
 
 ENTRYPOINT ["java","-jar","/app/batch.jar"]
