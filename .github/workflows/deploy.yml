@@ -1,0 +1,62 @@
+name: Deploy Backend (App)
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-northeast-2.amazonaws.com
+  APP_REPO: boogle-app
+  BATCH_REPO: boogle-batch
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push App
+        run: |
+          docker build --target app-runtime -t $ECR_REGISTRY/$APP_REPO:$IMAGE_TAG -f boogle/Dockerfile boogle
+          docker push $ECR_REGISTRY/$APP_REPO:$IMAGE_TAG
+          docker tag  $ECR_REGISTRY/$APP_REPO:$IMAGE_TAG $ECR_REGISTRY/$APP_REPO:latest
+          docker push $ECR_REGISTRY/$APP_REPO:latest
+
+      - name: Build & Push Batch
+        run: |
+          docker build --target batch-runtime -t $ECR_REGISTRY/$BATCH_REPO:$IMAGE_TAG -f boogle/Dockerfile boogle
+          docker push $ECR_REGISTRY/$BATCH_REPO:$IMAGE_TAG
+          docker tag  $ECR_REGISTRY/$BATCH_REPO:$IMAGE_TAG $ECR_REGISTRY/$BATCH_REPO:latest
+          docker push $ECR_REGISTRY/$BATCH_REPO:latest
+
+      - name: Deploy App to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ec2-54-116-8-36.ap-northeast-2.compute.amazonaws.com
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -euo pipefail
+
+            test -f /home/ubuntu/boogle/docker-compose.prod.yml
+            test -f /home/ubuntu/boogle/.env.prod
+
+            cd /home/ubuntu/boogle
+
+            aws ecr get-login-password --region ap-northeast-2 \
+              | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-northeast-2.amazonaws.com
+
+            export IMAGE_TAG=latest
+            docker compose -f docker-compose.prod.yml pull app
+            docker compose -f docker-compose.prod.yml up -d app
+            docker ps
