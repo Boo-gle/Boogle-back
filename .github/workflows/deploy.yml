@@ -2,7 +2,7 @@ name: Deploy Backend (App)
 
 on:
   push:
-    branches: [ "fix/batch-auto-shutdown" ]
+    branches: [ "chore/deploy" ]
 
 env:
   AWS_REGION: ap-northeast-2
