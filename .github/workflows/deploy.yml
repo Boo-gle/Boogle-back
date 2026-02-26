@@ -62,22 +62,26 @@ jobs:
             docker ps
 
       - name: Verify dictionary files exist
+        if: success()
         run: |
-          test -f synonyms.txt
-          test -f user_dic.txt
+          test -f boogle/synonyms.txt
+          test -f boogle/user_dic.txt
 
       - name: Transfer ES dictionary files to ES Server
+        if: success()
         uses: appleboy/scp-action@v0.1.7
         with:
           host: 13.125.174.68
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY_ES }}
           source: |
-            synonyms.txt
-            user_dic.txt
+            boogle/synonyms.txt
+            boogle/user_dic.txt
           target: /opt/boogle/config/
+          strip_components: 1
 
       - name: Reload Elasticsearch analyzers
+        if: success()
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: 13.125.174.68
