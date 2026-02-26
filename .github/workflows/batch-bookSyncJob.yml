@@ -1,0 +1,21 @@
+name: Batch - bookSyncJob (03:00 KST)
+
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+jobs:
+  run-batch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run bookSyncJob on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ec2-54-116-8-36.ap-northeast-2.compute.amazonaws.com
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd /home/ubuntu/boogle
+            ./run-batch.sh bookSyncJob true
