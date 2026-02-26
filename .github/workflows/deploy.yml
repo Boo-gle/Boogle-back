@@ -103,3 +103,4 @@ jobs:
             echo "Reloading analyzers..."
             curl -fsSL -X POST http://localhost:9200/books/_reload_search_analyzers
             echo "Reload complete."
+            
