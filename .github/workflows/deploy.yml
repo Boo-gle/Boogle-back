@@ -2,7 +2,7 @@ name: Deploy Backend (App)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "chore/deploy" ]
 
 env:
   AWS_REGION: ap-northeast-2
@@ -64,8 +64,8 @@ jobs:
       - name: Verify dictionary files exist
         if: success()
         run: |
-          test -f boogle/synonyms.txt
-          test -f boogle/user_dic.txt
+          test -f ./boogle/synonyms.txt
+          test -f ./boogle/user_dic.txt
 
       - name: Transfer ES dictionary files to ES Server
         if: success()
@@ -75,8 +75,8 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY_ES }}
           source: |
-            boogle/synonyms.txt
-            boogle/user_dic.txt
+            ./boogle/synonyms.txt
+            ./boogle/user_dic.txt
           target: /opt/boogle/config/
           strip_components: 1
 
