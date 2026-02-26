@@ -60,3 +60,31 @@ jobs:
             docker compose -f docker-compose.prod.yml pull app
             docker compose -f docker-compose.prod.yml up -d app
             docker ps
+
+      - name: Verify dictionary files exist
+        run: |
+          test -f synonyms.txt
+          test -f user_dic.txt
+
+      - name: Transfer ES dictionary files to ES Server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 13.125.174.68
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY_ES }}
+          source: |
+            synonyms.txt
+            user_dic.txt
+          target: /opt/boogle/config/
+
+      - name: Reload Elasticsearch analyzers
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 13.125.174.68
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY_ES }}
+          script: |
+            set -e
+            echo "Reloading analyzers..."
+            curl -fsSL -X POST http://localhost:9200/books/_reload_search_analyzers
+            echo "Reload complete."
