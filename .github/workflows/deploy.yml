@@ -61,24 +61,35 @@ jobs:
             docker compose -f docker-compose.prod.yml up -d app
             docker ps
 
-      - name: Verify dictionary files exist
-        if: success()
+      - name: Prepare ES SSH key
         run: |
-          test -f ./boogle/synonyms.txt
-          test -f ./boogle/user_dic.txt
+          mkdir -p ~/.ssh
+          cat > ~/.ssh/es_key.pem <<'EOF'
+          ${{ secrets.EC2_SSH_KEY_ES }}
+          EOF
+          chmod 600 ~/.ssh/es_key.pem
 
-      - name: Transfer ES dictionary files to ES Server
-        if: success()
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: 13.125.174.68
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY_ES }}
-          source: |
-            ./boogle/synonyms.txt
-            ./boogle/user_dic.txt
-          target: /opt/boogle/config/
-          strip_components: 1
+      - name: Copy ES dictionary files (scp)
+        run: |
+          set -euo pipefail
+          
+          # 1) 러너에 파일 존재 확인
+          test -s boogle/synonyms.txt
+          test -s boogle/user_dic.txt
+          ls -al boogle/synonyms.txt boogle/user_dic.txt
+          
+          # 2) 목적지 디렉토리 권한/존재 확인 (없으면 생성)
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/es_key.pem ubuntu@13.125.174.68 \
+            "sudo mkdir -p /opt/boogle/config && sudo chown -R ubuntu:ubuntu /opt/boogle"
+          
+          # 3) 바로 목적지로 전송 (중간 /tmp 경유 제거)
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/es_key.pem \
+            boogle/synonyms.txt boogle/user_dic.txt \
+            ubuntu@13.125.174.68:/opt/boogle/config/
+          
+          # 4) 서버에서 실제 배치 확인
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/es_key.pem ubuntu@13.125.174.68 \
+            "ls -al /opt/boogle/config && head -n 3 /opt/boogle/config/synonyms.txt && head -n 3 /opt/boogle/config/user_dic.txt"
 
       - name: Reload Elasticsearch analyzers
         if: success()
