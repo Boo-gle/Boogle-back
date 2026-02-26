@@ -34,8 +34,8 @@ spring:
 
   elasticsearch:
     uris: ${SPRING_ELASTICSEARCH_URIS}
-    connection-timeout: 5s
-    socket-timeout: 3s
+    connection-timeout: 10s
+    socket-timeout: 30s
 
 search:
   es:
