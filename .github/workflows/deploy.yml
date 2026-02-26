@@ -2,7 +2,7 @@ name: Deploy Backend (App)
 
 on:
   push:
-    branches: [ "chore/deploy" ]
+    branches: [ "main" ]
 
 env:
   AWS_REGION: ap-northeast-2
