@@ -30,8 +30,8 @@ public class BookSyncScheduler {
         Instant jobStartTime = Instant.now();
 
         try {
-            // 스프링 배치는 파라미터가 같으면 '이미 실행된 Job'으로 인식해서 안 돕니다.
-            // 매번 고유하게 실행되도록 현재 시간을 파라미터로 넘겨줍니다.
+            // 스프링 배치는 파라미터가 같으면 '이미 실행된 Job'으로 인식해서 안 돌게 됨
+            // 매번 실행되도록 현재 시간을 파라미터로 넘겨주기
             JobParameters jobParameters = new JobParametersBuilder()
                     .addLong("runTime", System.currentTimeMillis())
                     .toJobParameters();
