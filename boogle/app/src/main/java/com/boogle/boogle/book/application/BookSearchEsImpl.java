@@ -185,7 +185,8 @@ public class BookSearchEsImpl implements BookSearchService {
                             .fields(generalFields)
                             .type(TextQueryType.BestFields)
                             .tieBreaker(0.1)
-                            .fuzziness(keyword.length() <= 2 ? "0" : "AUTO")
+//                            .fuzziness(keyword.length() <= 2 ? "0" : "AUTO")
+                                    .operator(Operator.And)
                     ));
 
                     if (searchAuthor) {
@@ -499,7 +500,7 @@ public class BookSearchEsImpl implements BookSearchService {
 
         return new AggregationResponse(categoryBuckets);
     }
-
+    
 }
 
 
