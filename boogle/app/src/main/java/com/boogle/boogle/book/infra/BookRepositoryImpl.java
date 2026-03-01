@@ -22,7 +22,7 @@ import static com.boogle.boogle.book.domain.QCategory.category;
 
 
 @RequiredArgsConstructor
-public class BookRepositoryImpl implements BookRepositoryCustom {
+public class BookRepositoryImpl implements BookRepositoryCustom { // DB전용 구현체
 
     private final JPAQueryFactory  queryFactory;
 
@@ -62,17 +62,17 @@ public class BookRepositoryImpl implements BookRepositoryCustom {
         return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
     }
 
-    // 1. 키워드 조건 (제목, 저자, 출판사, 설명)
+    // 1. 키워드 조건 (제목, 저자, 출판사)
+    // -> I/O를 유발하는 설명(TEXT타입) 삭제
     private BooleanExpression keywordCondition(String keyword, List<String> conditions) {
-        if (!StringUtils.hasText(keyword)) return null;
 
+        if (!StringUtils.hasText(keyword)) return null;
         String kw = keyword.trim();
-        // 체크박스 선택이 없으면 전체 필드 검색
+        // 체크박스 없을 때 기본 검색
         if (conditions == null || conditions.isEmpty()) {
             return book.title.containsIgnoreCase(kw)
                     .or(book.author.containsIgnoreCase(kw))
-                    .or(book.publisher.containsIgnoreCase(kw))
-                    .or(book.description.containsIgnoreCase(kw));
+                    .or(book.publisher.containsIgnoreCase(kw));
         }
 
         BooleanExpression result = null;
