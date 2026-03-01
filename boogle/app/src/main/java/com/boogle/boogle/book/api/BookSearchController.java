@@ -1,9 +1,6 @@
 package com.boogle.boogle.book.api;
 
-import com.boogle.boogle.book.api.dto.AggregationResponse;
-import com.boogle.boogle.book.api.dto.BookSearchRequest;
-import com.boogle.boogle.book.api.dto.BookSearchResponse;
-import com.boogle.boogle.book.api.dto.SuggestionResponse;
+import com.boogle.boogle.book.api.dto.*;
 import com.boogle.boogle.book.application.BookSearchService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +23,7 @@ public class BookSearchController {
      * @return 프로파일 설정(db/es)에 따른 검색 결과 리스트
      */
     @GetMapping
-    public Page<BookSearchResponse> search(
+    public BookSearchListResponse search(
             @Valid
             @ModelAttribute
             BookSearchRequest request

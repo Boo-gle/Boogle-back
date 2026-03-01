@@ -6,12 +6,10 @@ import co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import co.elastic.clients.elasticsearch.core.search.FieldSuggester;
 import co.elastic.clients.elasticsearch.core.search.StringDistance;
+import co.elastic.clients.elasticsearch.core.search.SuggestSort;
 import co.elastic.clients.elasticsearch.core.search.Suggester;
 import co.elastic.clients.json.JsonData;
-import com.boogle.boogle.book.api.dto.AggregationResponse;
-import com.boogle.boogle.book.api.dto.BookSearchRequest;
-import com.boogle.boogle.book.api.dto.BookSearchResponse;
-import com.boogle.boogle.book.api.dto.SuggestionResponse;
+import com.boogle.boogle.book.api.dto.*;
 import com.boogle.boogle.book.domain.document.BookDocument;
 import com.boogle.boogle.search.application.LowQualityKeywordDailyService;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +48,7 @@ public class BookSearchEsImpl implements BookSearchService {
     private static final Logger searchLogger = LoggerFactory.getLogger("SEARCH_FAILURE");
 
     @Override
-    public Page<BookSearchResponse> search(BookSearchRequest request) {
+    public BookSearchListResponse search(BookSearchRequest request) {
         // log - 검색 시간 측정
         long startTime = System.currentTimeMillis();
 
@@ -273,12 +271,13 @@ public class BookSearchEsImpl implements BookSearchService {
                         .suggesters("spell-check", FieldSuggester.of(fs -> fs
                                 .text(request.keyword().trim()) // 오타 단어
                                 .term(t -> t
-                                        .field("title") // 오타를 검사할 기준 필드 (mappings.json 기준)
-                                        .suggestMode(SuggestMode.Popular) // 더 자주 검색되는/존재하는 단어로 추천
-                                        .minWordLength(2)
-                                        .prefixLength(0)
-                                        .maxEdits(2)
-                                        .stringDistance(StringDistance.Levenshtein)
+                                        .field("title.spell")
+                                        .suggestMode(SuggestMode.Always)   // 항상 제안
+                                        .sort(SuggestSort.Score)           // 점수 순 정렬
+                                        .minWordLength(2)                  // 2글자 이상 단어 포함
+                                        .prefixLength(0)                   // 접두사 제한 없음
+                                        .maxEdits(1)                       // 오타 2글자까지 허용
+                                        .stringDistance(StringDistance.JaroWinkler) // 한글에 안정적
                                 )
                         ))
                 ))
@@ -295,43 +294,44 @@ public class BookSearchEsImpl implements BookSearchService {
         }
 
 
-        // 검색 결과가 0건일 때 실패어 기록
-        if (searchHits.getTotalHits() == 0) {
-            String keyword = request.keyword().trim();
-            String esSuggestedKeyword = null;
+        // 검색 실행해서 오타 교정어 추출하기
+        String keyword = request.keyword().trim();
+        String esSuggestedKeyword = null;
 
-            // 엘라스틱서치가 응답에 'Suggest' 결과를 같이 보내줬는지 확인
-            // 결과와 상관없이 ES가 추천해준 단어가 있는지 먼저 확인 (무조건 추출)
-            if (searchHits.hasSuggest()) {
-                // spell-check라는 이름으로 요청했던 서제스터 결과를 가져옴
-                var suggestion = searchHits.getSuggest().getSuggestion("spell-check");
-                var entries = suggestion.getEntries();
+        if (searchHits.hasSuggest()) {
+            var suggestion = searchHits.getSuggest().getSuggestion("spell-check");
+            if (suggestion != null && suggestion.getEntries() != null) {
+                StringBuilder suggestedSentence = new StringBuilder();
+                boolean hasAnyCorrection = false;
 
-                // 추천 결과가 존재하고, 그 안에 실제 옵션(단어)이 들어있는지 확인
-                if (entries != null && !entries.isEmpty() && !entries.get(0).getOptions().isEmpty()) {
-                    // 가장 확률이 높은 첫 번째 추천 단어를 꺼냄
-                    esSuggestedKeyword = entries.get(0).getOptions().get(0).getText();
+                for (var entry : suggestion.getEntries()) {
+                    if (!entry.getOptions().isEmpty()) {
+                        // 오타 발견: 첫 번째 추천 단어로 교체
+                        suggestedSentence.append(entry.getOptions().get(0).getText()).append(" ");
+                        hasAnyCorrection = true;
+                    } else {
+                        // 정상 단어: 원본 유지
+                        suggestedSentence.append(entry.getText()).append(" ");
+                    }
+                }
+
+                if (hasAnyCorrection) {
+                    String fullSuggestion = suggestedSentence.toString().trim();
+                    if (!keyword.equals(fullSuggestion)) {
+                        esSuggestedKeyword = fullSuggestion;
+                    }
                 }
             }
+        }
 
-            // 2. 팀원이 정의한 "실패어 기록 조건" 확인
-            // 상황 A: 검색 결과가 0건일 때
-            // 상황 B: 결과는 있지만 품질이 너무 낮을 때 (예: 결과가 3건 미만)
-            long totalHits = searchHits.getTotalHits();
-            boolean isLowQuality = (totalHits < 3);
-
-            if (isLowQuality) {
-
-                //log
-                searchLogger.warn(
-                        "event=SEARCH_FAIL keyword={} totalHits={} duration={}ms source=ES",
-                        keyword, totalHits, duration
-                );
-
-                // 원본 검색어와 ES가 찾은 추천어를 DB에 쌓음
-                lowQualityKeywordDailyService.recordLowQualityKeyword(keyword, esSuggestedKeyword);
-            }
-
+        // 검색 결과가 3건 미만일 때 실패어 기록하기
+        if (searchHits.getTotalHits() < 3) {
+            searchLogger.warn(
+                    "event=SEARCH_FAIL keyword={} totalHits={} duration={}ms source=ES",
+                    keyword, searchHits.getTotalHits(), duration
+            );
+            // 원본 검색어와 위에서 만든 교정어(있는 경우만)를 DB에 저장됨
+            lowQualityKeywordDailyService.recordLowQualityKeyword(keyword, esSuggestedKeyword);
         }
 
         // 프론트로 보내기 위해 DTO로 매핑하기
@@ -369,7 +369,9 @@ public class BookSearchEsImpl implements BookSearchService {
                             .build();
                 }).collect(Collectors.toList());
 
-        return new PageImpl<>(bookSearchList, pageable, searchHits.getTotalHits());
+        // 최종 반환: PageImpl을 직접 던지지 않고 BookSearchListResponse 바구니에 담아서 반환
+        Page<BookSearchResponse> pageResult = new PageImpl<>(bookSearchList, pageable, searchHits.getTotalHits());
+        return new BookSearchListResponse(pageResult, keyword, esSuggestedKeyword);
     }
 
 
@@ -500,7 +502,7 @@ public class BookSearchEsImpl implements BookSearchService {
 
         return new AggregationResponse(categoryBuckets);
     }
-    
+
 }
 
 

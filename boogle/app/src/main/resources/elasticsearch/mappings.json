@@ -18,6 +18,10 @@
         "keyword": {
           "type": "keyword",
           "normalizer": "lowercase_normalizer"
+        },
+        "spell": {
+          "type": "text",
+          "analyzer": "korean_spell_analyzer"
         }
       }
     },

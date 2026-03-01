@@ -1,11 +1,8 @@
 package com.boogle.boogle.book.application;
 
-import com.boogle.boogle.book.api.dto.AggregationResponse;
-import com.boogle.boogle.book.api.dto.SuggestionResponse;
+import com.boogle.boogle.book.api.dto.*;
 import com.boogle.boogle.book.domain.Book;
 import com.boogle.boogle.book.infra.BookRepository;
-import com.boogle.boogle.book.api.dto.BookSearchRequest;
-import com.boogle.boogle.book.api.dto.BookSearchResponse;
 import com.boogle.boogle.search.application.LowQualityKeywordDailyService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -29,7 +26,7 @@ public class BookSearchDbImpl implements BookSearchService {
     private static final Logger searchLogger = LoggerFactory.getLogger("SEARCH_FAILURE");
 
     @Override
-    public Page<BookSearchResponse> search(BookSearchRequest request) {
+    public BookSearchListResponse search(BookSearchRequest request) {
 
         PageRequest pageRequest = PageRequest.of(request.page(), request.size());
         String keyword = request.keyword().trim();
@@ -50,7 +47,7 @@ public class BookSearchDbImpl implements BookSearchService {
             lowQualityKeywordDailyService.recordLowQualityKeyword(keyword, null);
         }
 
-        return bookPage.map(book -> BookSearchResponse.builder()
+        Page<BookSearchResponse> mappedPage = bookPage.map(book -> BookSearchResponse.builder()
                 .id(book.getId())
                 .title(book.getTitle())
                 .author(book.getAuthor())
@@ -64,6 +61,10 @@ public class BookSearchDbImpl implements BookSearchService {
                 .mallType(book.getCategory().getMallType())
                 .productType(book.getProductType() != null ? book.getProductType().name() : null)
                 .build());
+
+        // 최종적으로 바구니(BookSearchListResponse)에 담아서 반환
+        // DB 검색은 오타 교정 기능이 없으므로 correctedKeyword는 null을 전달
+        return new BookSearchListResponse(mappedPage, keyword, null);
     }
 
     @Override
