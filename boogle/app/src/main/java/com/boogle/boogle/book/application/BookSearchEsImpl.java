@@ -13,6 +13,7 @@ import co.elastic.clients.json.JsonData;
 import com.boogle.boogle.book.api.dto.*;
 import com.boogle.boogle.book.domain.document.BookDocument;
 import com.boogle.boogle.search.application.LowQualityKeywordDailyService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +31,8 @@ import org.springframework.data.elasticsearch.core.query.highlight.Highlight;
 import org.springframework.data.elasticsearch.core.query.highlight.HighlightField;
 import org.springframework.data.elasticsearch.core.query.highlight.HighlightFieldParameters;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -47,7 +50,10 @@ public class BookSearchEsImpl implements BookSearchService {
 
     private final LowQualityKeywordDailyService lowQualityKeywordDailyService;
 
+    // 로거
     private static final Logger searchLogger = LoggerFactory.getLogger("SEARCH_FAILURE");
+    private static final Logger accessLogger = LoggerFactory.getLogger("ACCESS_LOG");
+    private static final Logger errorLogger = LoggerFactory.getLogger("ERROR_LOG");
 
     @Override
     public BookSearchListResponse search(BookSearchRequest request) {
@@ -57,6 +63,7 @@ public class BookSearchEsImpl implements BookSearchService {
         // 페이징
         Pageable pageable = PageRequest.of(request.page(), request.size());
 
+        try{
         // 정렬 로직 추가
         org.springframework.data.domain.Sort sort;
         String sortParam = request.sort() != null ? request.sort() : "accuracy";
@@ -334,7 +341,7 @@ public class BookSearchEsImpl implements BookSearchService {
         // 검색 결과가 3건 미만일 때 실패어 기록하기
         if (searchHits.getTotalHits() < 3) {
             searchLogger.warn(
-                    "event=SEARCH_FAIL keyword={} totalHits={} duration={}ms source=ES",
+                    "event=SEARCH_FAILURE keyword={} totalHits={} duration={}ms source=ES",
                     keyword, searchHits.getTotalHits(), duration
             );
             // 원본 검색어와 위에서 만든 교정어(있는 경우만)를 DB에 저장됨
@@ -402,6 +409,11 @@ public class BookSearchEsImpl implements BookSearchService {
         long finalTotalHits;
 
         if (bookSearchList.isEmpty() || isLowQuality) {
+            // ip 정보 함께 기록
+            String currentIp = getClientIp();
+            accessLogger.info("event=SEARCH_RECOMMEND_MODE keyword={} ip={} suggested={} totalHits={}",
+                    keyword, currentIp, (esSuggestedKeyword != null ? esSuggestedKeyword:"NONE"), searchHits.getTotalHits());
+
             // 최근 6개월간 신간 조회
             String sixMonthsAgo = LocalDate.now().minusMonths(6).toString();
 
@@ -461,76 +473,101 @@ public class BookSearchEsImpl implements BookSearchService {
                 esSuggestedKeyword,
                 categoryBuckets
         );
+    } catch (Exception e) {
+        // 전체 에러 로그
+            errorLogger.error("event=SEARCH_ERROR keyword={} message={}", request.keyword(), e.getMessage());
+            return new BookSearchListResponse(new PageImpl<>(new ArrayList<>(), pageable, 0), 0, request.keyword(), null, new ArrayList<>());
+        }
     }
 
 
 
     public List<SuggestionResponse> getSuggestions(String keyword) {
-        String cleanKeyword = keyword.trim().toLowerCase(); // 공백 제거
-        if (cleanKeyword.isEmpty()) return List.of(); // 빈 리스트시 반환
-        boolean isChosung = cleanKeyword.matches("^[ㄱ-ㅎ]+$"); // 초성 검색 여부 결정
+        try {
+            String cleanKeyword = keyword.trim().toLowerCase(); // 공백 제거
+            if (cleanKeyword.isEmpty()) return List.of(); // 빈 리스트시 반환
+            boolean isChosung = cleanKeyword.matches("^[ㄱ-ㅎ]+$"); // 초성 검색 여부 결정
 
-        NativeQuery query = NativeQuery.builder()
-                .withQuery(q -> q.bool(b -> { // bool 쿼리
-                    // 일반 텍스트 검색 (제목, 저자)
-                    if (isChosung) {
-                        // 초성이면 초성 필드만 검색
-                        b.must(s -> s.matchPhrasePrefix(mpp -> mpp
-                                .field("titleChosung")
-                                .query(cleanKeyword)
-                                .boost(5.0f)
-                        ));
-                    } else {
-                        // 일반 검색은 제목 + 저자만
-                        b.must(s -> s.multiMatch(mm -> mm
-                                .query(cleanKeyword)
-                                .fields("title.suggest^3", "author^2")
-                                .type(TextQueryType.PhrasePrefix)
-                        ));
-                    }
-                    return b;
-                }))
+            NativeQuery query = NativeQuery.builder()
+                    .withQuery(q -> q.bool(b -> { // bool 쿼리
+                        // 일반 텍스트 검색 (제목, 저자)
+                        if (isChosung) {
+                            // 초성이면 초성 필드만 검색
+                            b.must(s -> s.matchPhrasePrefix(mpp -> mpp
+                                    .field("titleChosung")
+                                    .query(cleanKeyword)
+                                    .boost(5.0f)
+                            ));
+                        } else {
+                            // 일반 검색은 제목 + 저자만
+                            b.must(s -> s.multiMatch(mm -> mm
+                                    .query(cleanKeyword)
+                                    .fields("title.suggest^3", "author^2")
+                                    .type(TextQueryType.PhrasePrefix)
+                            ));
+                        }
+                        return b;
+                    }))
 
-                .withPageable(PageRequest.of(0, 30))
-                .build();
+                    .withPageable(PageRequest.of(0, 30))
+                    .build();
 
-        SearchHits<BookDocument> hits = elasticsearchOperations.search(query, BookDocument.class);
+            SearchHits<BookDocument> hits = elasticsearchOperations.search(query, BookDocument.class);
 
-        return hits.getSearchHits().stream()
-                .map(hit -> {
-                    BookDocument doc = hit.getContent();
-                    String fullTitle = doc.getTitle().replaceAll("&quot;", "\"");
+            return hits.getSearchHits().stream()
+                    .map(hit -> {
+                        BookDocument doc = hit.getContent();
+                        String fullTitle = doc.getTitle().replaceAll("&quot;", "\"");
 //                            .split(" - ")[0]
-                    String author = doc.getAuthor() != null ? doc.getAuthor() : "저자 미상";
+                        String author = doc.getAuthor() != null ? doc.getAuthor() : "저자 미상";
 
-                    // 기본은 TITLE 타입으로 설정
-                    String type = "TITLE";
+                        // 기본은 TITLE 타입으로 설정
+                        String type = "TITLE";
 
-                    // 만약 제목에는 키워드가 없고, 저자 이름에만 키워드가 있다면 AUTHOR로 표시
-                    if (!fullTitle.toLowerCase().contains(cleanKeyword) &&
-                            author.toLowerCase().contains(cleanKeyword)) {
-                        type = "AUTHOR";
-                    }
+                        // 만약 제목에는 키워드가 없고, 저자 이름에만 키워드가 있다면 AUTHOR로 표시
+                        if (!fullTitle.toLowerCase().contains(cleanKeyword) &&
+                                author.toLowerCase().contains(cleanKeyword)) {
+                            type = "AUTHOR";
+                        }
 
-                    return new SuggestionResponse(fullTitle, author, type);
-                })
-                .distinct() // 혹시 모를 중복 제거
-                .sorted((s1, s2) -> {
-                    boolean s1Exact = s1.title().equalsIgnoreCase(cleanKeyword);
-                    boolean s2Exact = s2.title().equalsIgnoreCase(cleanKeyword);
+                        return new SuggestionResponse(fullTitle, author, type);
+                    })
+                    .distinct() // 혹시 모를 중복 제거
+                    .sorted((s1, s2) -> {
+                        boolean s1Exact = s1.title().equalsIgnoreCase(cleanKeyword);
+                        boolean s2Exact = s2.title().equalsIgnoreCase(cleanKeyword);
 
-                    if (s1Exact && !s2Exact) return -1;
-                    if (!s1Exact && s2Exact) return 1;
+                        if (s1Exact && !s2Exact) return -1;
+                        if (!s1Exact && s2Exact) return 1;
 
-                    return Integer.compare(getTypePriority(s1.type()), getTypePriority(s2.type()));
-                })
-                .limit(10)
-                .collect(Collectors.toList());
+                        return Integer.compare(getTypePriority(s1.type()), getTypePriority(s2.type()));
+                    })
+                    .limit(10)
+                    .collect(Collectors.toList());
 
+        } catch (Exception e) {
+            // 키워드랑 예외 객체 (e)를 함께 넘겨 어디서 터졌는지 확인
+            errorLogger.error("event=SUGGEST_ERROR keyword={} message={}", keyword, e.getMessage(), e);
+            return List.of();   // 에러 발생 시 빈 리스트 반환
+        }
     }
 
     private int getTypePriority(String type) {
         return "TITLE".equals(type) ? 1 : 2;
+    }
+
+    // 현재 요청을 보내는 사용자의 IP를 찾아내는 메서드
+    private String getClientIp(){
+        try{
+            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+            String ip = request.getHeader("x-forwarded-for");
+            if(ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)){
+                ip = request.getRemoteAddr();
+            }
+            return ip;
+        } catch (Exception e) {
+            return "0.0.0.0";
+        }
     }
 
 }
