@@ -391,7 +391,7 @@ public class BookSearchEsImpl implements BookSearchService {
         // 품질 판정: 결과가 없거나, 점수가 낮거나, 실제 매칭되는 단어가 없으면 추천 모드 실행
         boolean isLowQuality = bookSearchList.isEmpty()
                 || Double.isNaN(maxScore)
-                || maxScore < 400.0;
+                || maxScore < 300.0;
 
         // 임시 디버그 로그
         log.warn("=== DEBUG keyword={} maxScore={} suggested={} totalHits={} firstTitle={}",
