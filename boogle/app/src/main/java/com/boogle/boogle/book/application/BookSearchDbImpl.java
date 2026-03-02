@@ -64,7 +64,7 @@ public class BookSearchDbImpl implements BookSearchService {
 
         // 최종적으로 바구니(BookSearchListResponse)에 담아서 반환
         // DB 검색은 오타 교정 기능이 없으므로 correctedKeyword는 null을 전달
-        return new BookSearchListResponse(mappedPage, keyword, null);
+        return new BookSearchListResponse(mappedPage, keyword, null,null);
     }
 
     @Override
@@ -72,9 +72,9 @@ public class BookSearchDbImpl implements BookSearchService {
         return List.of();
     }
 
-    @Override
-    public AggregationResponse getCategoryAggregations(String keyword) {
-        return new AggregationResponse(List.of());
-    }
+//    @Override
+//    public AggregationResponse getCategoryAggregations(String keyword) {
+//        return new AggregationResponse(List.of());
+//    }
 
 }

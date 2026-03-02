@@ -37,15 +37,15 @@ public class BookSearchController {
         return bookSearchService.getSuggestions(keyword);
     }
 
-    @GetMapping("/aggregations")
-    public AggregationResponse getCategoryAggregations(
-            @RequestParam(
-                    required = false,
-                    defaultValue = "")
-            String keyword
-    ) {
-
-        return bookSearchService.getCategoryAggregations(keyword);
-    }
+//    @GetMapping("/aggregations")
+//    public AggregationResponse getCategoryAggregations(
+//            @RequestParam(
+//                    required = false,
+//                    defaultValue = "")
+//            String keyword
+//    ) {
+//
+//        return bookSearchService.getCategoryAggregations(keyword);
+//    }
 
 }
