@@ -177,7 +177,7 @@ public class BookSearchEsImpl implements BookSearchService {
                                 .field("title")
                                 .query(keyword)
                                 .operator(Operator.And)
-                                .boost(5.0F)
+                                .boost(30.0F)
                         ));
                     }
 
