@@ -14,6 +14,7 @@ import com.boogle.boogle.book.api.dto.*;
 import com.boogle.boogle.book.domain.document.BookDocument;
 import com.boogle.boogle.search.application.LowQualityKeywordDailyService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -41,6 +42,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "search.es.enabled", havingValue = "true")
+@Slf4j
 public class BookSearchEsImpl implements BookSearchService {
 
     private final ElasticsearchOperations elasticsearchOperations;
@@ -266,7 +268,7 @@ public class BookSearchEsImpl implements BookSearchService {
                                         .sort(SuggestSort.Score)           // 점수 순 정렬
                                         .minWordLength(2)                  // 2글자 이상 단어 포함
                                         .prefixLength(0)                   // 접두사 제한 없음
-                                        .maxEdits(1)                       // 오타 2글자까지 허용
+                                        .maxEdits(2)                       // 오타 2글자까지 허용
                                         .stringDistance(StringDistance.JaroWinkler) // 한글에 안정적
                                 )
                         ))
@@ -378,30 +380,23 @@ public class BookSearchEsImpl implements BookSearchService {
 
         // 저품질 판단 및 추천 로직
         double maxScore = searchHits.getMaxScore();
-        boolean isRealMatch = false;
-
-        if (!bookSearchList.isEmpty()) {
-            BookSearchResponse firstBook = bookSearchList.get(0);
-            String firstTitle = firstBook.title().replaceAll(" ", "");
-            String cleanKeyword = keyword.replaceAll(" ", "");
-
-            if (cleanKeyword.length() >= 2) {
-                for (int i = 0; i < cleanKeyword.length() - 1; i++) {
-                    if (firstTitle.contains(cleanKeyword.substring(i, i + 2))) {
-                        isRealMatch = true;
-                        break;
-                    }
-                }
-            } else {
-                isRealMatch = firstTitle.contains(cleanKeyword);
-            }
-        }
 
         // 품질 판정: 결과가 없거나, 점수가 낮거나, 실제 매칭되는 단어가 없으면 추천 모드 실행
-        boolean isLowQuality = Double.isNaN(maxScore) || maxScore < 20.0 || !isRealMatch;
+        boolean isLowQuality = bookSearchList.isEmpty()
+                || Double.isNaN(maxScore)
+                || maxScore < 400.0;
+
+        // 임시 디버그 로그
+        log.warn("=== DEBUG keyword={} maxScore={} suggested={} totalHits={} firstTitle={}",
+                keyword, maxScore, esSuggestedKeyword, searchHits.getTotalHits(),
+                searchHits.getSearchHits().isEmpty() ? "없음" : searchHits.getSearchHits().get(0).getContent().getTitle()
+        );
         long finalTotalHits;
 
         if (bookSearchList.isEmpty() || isLowQuality) {
+
+            // Todo : 교정어가 있으면 재검색 후 반환
+
             // 최근 6개월간 신간 조회
             String sixMonthsAgo = LocalDate.now().minusMonths(6).toString();
 
