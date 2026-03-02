@@ -1,5 +1,6 @@
 package com.boogle.boogle.book.application;
 
+import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.SuggestMode;
 import co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import co.elastic.clients.elasticsearch._types.query_dsl.Operator;
@@ -30,6 +31,7 @@ import org.springframework.data.elasticsearch.core.query.highlight.HighlightFiel
 import org.springframework.data.elasticsearch.core.query.highlight.HighlightFieldParameters;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -288,7 +290,6 @@ public class BookSearchEsImpl implements BookSearchService {
 
         // BookDocument 타입으로 ES에 보내기
         SearchHits<BookDocument> searchHits = elasticsearchOperations.search(query, BookDocument.class);
-
         // 집계 데이터 추출
         List<AggregationResponse.AggregationBucket> categoryBuckets = new ArrayList<>();
         if (searchHits.hasAggregations()) {
@@ -386,9 +387,91 @@ public class BookSearchEsImpl implements BookSearchService {
                             .build();
                 }).collect(Collectors.toList());
 
-        // 최종 반환: PageImpl을 직접 던지지 않고 BookSearchListResponse 바구니에 담아서 반환
-        Page<BookSearchResponse> pageResult = new PageImpl<>(bookSearchList, pageable, searchHits.getTotalHits());
-        return new BookSearchListResponse(pageResult, keyword, esSuggestedKeyword,categoryBuckets);
+        // 저품질 판단 및 추천 로직
+        double maxScore = searchHits.getMaxScore();
+        boolean isRealMatch = false;
+
+        if (!bookSearchList.isEmpty()) {
+            BookSearchResponse firstBook = bookSearchList.get(0);
+            String firstTitle = firstBook.title().replaceAll(" ", "");
+            String cleanKeyword = keyword.replaceAll(" ", "");
+
+            if (cleanKeyword.length() >= 2) {
+                for (int i = 0; i < cleanKeyword.length() - 1; i++) {
+                    if (firstTitle.contains(cleanKeyword.substring(i, i + 2))) {
+                        isRealMatch = true;
+                        break;
+                    }
+                }
+            } else {
+                isRealMatch = firstTitle.contains(cleanKeyword);
+            }
+        }
+
+        // 품질 판정: 결과가 없거나, 점수가 낮거나, 실제 매칭되는 단어가 없으면 추천 모드 실행
+        boolean isLowQuality = Double.isNaN(maxScore) || maxScore < 2000.0 || !isRealMatch;
+        long finalTotalHits;
+
+        if (bookSearchList.isEmpty() || isLowQuality) {
+            // 최근 6개월간 신간 조회
+            String sixMonthsAgo = LocalDate.now().minusMonths(6).toString();
+
+            NativeQuery recommendationQuery = NativeQuery.builder()
+                    .withQuery(q -> q.range(r -> r
+                            .untyped(u -> u
+                                    .field("publishedDate")
+                                    .gte(JsonData.of(sixMonthsAgo))
+                            )
+                    ))
+                    .withSort(s -> s.field(f -> f.field("publishedDate").order(SortOrder.Desc)))
+                    .withPageable(PageRequest.of(0, request.size()))
+                    .build();
+
+            // 기존 저품질 결과 비우기
+            bookSearchList.clear();
+            SearchHits<BookDocument> recoHits = elasticsearchOperations.search(recommendationQuery, BookDocument.class);
+
+            // 추천 결과 매핑 (score는 0.0)
+            bookSearchList = recoHits.getSearchHits().stream()
+                    .map(hit -> {
+                        BookDocument doc = hit.getContent();
+                        return BookSearchResponse.builder()
+                                .id(Long.parseLong(doc.getId()))
+                                .title(doc.getTitle())
+                                .highlightTitle(doc.getTitle())
+                                .author(doc.getAuthor())
+                                .publisher(doc.getPublisher())
+                                .thumbnailUrl(doc.getThumbnailUrl())
+                                .price(doc.getPrice())
+                                .score(0.0)
+                                .categoryDepth2(doc.getCategoryDepth2())
+                                .description(doc.getDescription())
+                                .highlightDescription(doc.getDescription())
+                                .isbn(doc.getIsbn())
+                                .publishedDate(doc.getPublishedDate())
+                                .mallType(doc.getMallType())
+                                .productType(doc.getProductType())
+                                .build();
+                    }).collect(Collectors.toList());
+
+            // 추천 모드이므로 전체 결과 수는 0건으로 보냄
+            finalTotalHits = 0;
+        } else {
+            // [정상 모드]: 검색 결과 수 유지
+            finalTotalHits = searchHits.getTotalHits();
+        }
+
+        // 최종 반환 처리
+        Page<BookSearchResponse> pageResult = new PageImpl<>(bookSearchList, pageable, finalTotalHits);
+
+        // BookSearchListResponse 생성 시 계산된 finalTotalHits를 직접 주입
+        return new BookSearchListResponse(
+                pageResult,
+                finalTotalHits,      // 여기에 0이 들어가야 프론트에서 "결과 없음" 문구가 뜸
+                keyword,
+                esSuggestedKeyword,
+                categoryBuckets
+        );
     }
 
 
@@ -460,66 +543,6 @@ public class BookSearchEsImpl implements BookSearchService {
     private int getTypePriority(String type) {
         return "TITLE".equals(type) ? 1 : 2;
     }
-
-//
-//    public AggregationResponse getCategoryAggregations(String keyword) {
-//        String cleanKeyword = keyword != null ? keyword.trim() : "";
-//
-//        NativeQuery query = NativeQuery.builder()
-//                .withQuery(q -> q.bool(
-//                        b -> {
-//                            if (!cleanKeyword.isEmpty()) {
-//                                // 메인 검색과 완전히 동일한 조건으로 책을 먼저 찾기
-//                                b.should(s -> s.term(
-//                                                t -> t.field("title.keyword").value(cleanKeyword).boost(10.0F)
-//                                        ))
-//                                        .should(s -> s.multiMatch(
-//                                                mm -> mm.query(cleanKeyword)
-//                                                        .fields("title^4.0",
-//                                                                "author^1.5",
-//                                                                "publisher",
-//                                                                "description")
-//                                                        .type(TextQueryType.BestFields)
-//                                                        .fuzziness("AUTO")
-//                                        ))
-//                                        .minimumShouldMatch("1");
-//                            }
-//                            return b;
-//                        }
-//                ))
-//                .withAggregation("category_count", Aggregation.of(a -> a
-//                        .terms(t -> t
-//                                .field("categoryDepth2.keyword")
-//                                .size(10)
-//                        )
-//                ))
-//                .withMaxResults(0) // 데이터 X 집계만 ㅇ
-//                .build();
-//
-//        SearchHits<BookDocument> hits = elasticsearchOperations.search(query, BookDocument.class);
-//
-//        List<AggregationResponse.AggregationBucket> categoryBuckets = new ArrayList<>();
-//
-//        if (hits.hasAggregations()) {
-//            var aggregations = (ElasticsearchAggregations) hits.getAggregations();
-//            var elcAggregation = aggregations.aggregationsAsMap().get("category_count");
-//
-//            if (elcAggregation != null) {
-//                var aggregate = elcAggregation.aggregation().getAggregate();
-//
-//                if (aggregate.isSterms()) {
-//                    categoryBuckets = aggregate.sterms().buckets().array().stream()
-//                            .map(bucket -> new AggregationResponse.AggregationBucket(
-//                                    bucket.key().stringValue(),
-//                                    bucket.docCount()
-//                            ))
-//                            .collect(Collectors.toList());
-//                }
-//            }
-//        }
-//
-//        return new AggregationResponse(categoryBuckets);
-//    }
 
 }
 

@@ -11,5 +11,4 @@ public interface BookSearchService {
 
     List<SuggestionResponse> getSuggestions(String keyword);
 
-//    AggregationResponse getCategoryAggregations(String keyword);
 }

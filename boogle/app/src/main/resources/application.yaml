@@ -31,4 +31,4 @@ management:
 
 search:
   es:
-    enabled: false
+    enabled: true
