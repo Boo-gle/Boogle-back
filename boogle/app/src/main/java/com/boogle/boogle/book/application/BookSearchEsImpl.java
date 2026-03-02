@@ -102,114 +102,103 @@ public class BookSearchEsImpl implements BookSearchService {
                         searchPublisher = true;
                     }
 
-
-                    // EXACT MATCH (최상위 우선순위)
+                    // ******** 제목 ******** //
+                    // 제목 전체와 검색어가 토씨 하나 안 틀리고 똑같을 때
                     if (searchTitle) {
                         b.should(s -> s.term(t -> t
                                 .field("title.keyword")
                                 .value(keyword)
-                                .boost(8000.0F)
+                                .boost(100.0F)
                         ));
                     }
-
-                    if (searchAuthor) {
-                        // 정확 매칭
-                        b.should(s -> s.term(t -> t
-                                .field("author.keyword")
-                                .value(keyword)
-                                .boost(2100.0F)
-                        ));
-
-                        // 부분 검색 (authorSuggest)
-                        b.should(s -> s.match(m -> m
-                                .field("author.authorSuggest")
-                                .query(keyword)
-                                .boost(1200.0F)
-                        ));
-
-                        // raw 필드 PHRASE MATCH
-                        b.should(s -> s.matchPhrase(mp -> mp
-                                .field("author.raw")
-                                .query(keyword)
-                                .boost(2000.0F)
-                        ));
-                    }
-
-                    if (searchPublisher) {
-                        b.should(s -> s.term(t -> t
-                                .field("publisher.keyword")
-                                .value(keyword)
-                                .boost(500.0F)
-                        ));
-                    }
-
-
-                    // PHRASE MATCH (decompound none)
+                    // 제목 안에 검색어 문구가 순서대로 그대로 들어있을 때
                     if (searchTitle) {
                         b.should(s -> s.matchPhrase(mp -> mp
                                 .field("title.raw")
                                 .query(keyword)
-                                .boost(5000.0F)
+                                .boost(60.0F) // 2순위 점수
                         ));
                     }
 
+                    // ******** 작가명 ******** //
                     if (searchAuthor) {
+                        // 저자 이름이 하나도 안 틀리고 똑같을 때
+                        b.should(s -> s.term(t -> t
+                                .field("author.keyword")
+                                .value(keyword)
+                                .boost(30.0F)
+                        ));
+
+
+                        // 저자 이름이 순서대로 포함될 때
                         b.should(s -> s.matchPhrase(mp -> mp
-                                .field("author.raw") // Keyword 분석기 필드 사용
+                                .field("author.raw")
                                 .query(keyword)
-                                .boost(200.0F)
+                                .boost(25.0F)
+                        ));
+
+                        // 이름의 앞 글자만 쳤을 때
+                        b.should(s -> s.match(m -> m
+                                .field("author.authorSuggest")
+                                .query(keyword)
+                                .boost(10.0F)
+                        ));
+
+
+                    }
+
+                    // ******** 출판사명 ******** //
+                    if (searchPublisher) {
+                        b.should(s -> s.term(t -> t
+                                .field("publisher.keyword")
+                                .value(keyword)
+                                .boost(10.0F)
                         ));
                     }
 
 
                     // 초성 검색 (autocomplete analyzer 기반)
-
                     b.should(s -> s.match(m -> m
                             .field("titleChosung")
                             .query(keyword)
-                            .boost(300.0F)
+                            .boost(5.0F)
                     ));
 
 
                     // 일반 매칭 (핵심 필드만!)
-
                     List<String> generalFields = new ArrayList<>();
 
-                    if (searchTitle) generalFields.add("title^120.0");
+//                    if (searchTitle) generalFields.add("title^120.0");
                     if (searchPublisher) generalFields.add("publisher^30.0");
 
 
-                    b.should(s -> s.multiMatch(mm -> mm
-                            .query(keyword)
-                            .fields(generalFields)
-                            .type(TextQueryType.BestFields)
-                            .tieBreaker(0.1)
-//                            .fuzziness(keyword.length() <= 2 ? "0" : "AUTO")
-                                    .operator(Operator.And)
-                    ));
+                    if (searchTitle) {
+                        b.should(s -> s.match(m -> m
+                                .field("title")
+                                .query(keyword)
+                                .operator(Operator.And)
+                                .boost(5.0F)
+                        ));
+                    }
 
                     if (searchAuthor) {
                         b.should(s -> s.match(m -> m
                                 .field("author")
                                 .query(keyword)
                                 .operator(Operator.And) // "카", "자바", "나"가 다 있어야 점수 부여
-                                .boost(5.0F) // 점수를 낮게 설정해서 제목 매칭을 방해하지 않게 함
+                                .boost(2.0F) // 점수를 낮게 설정해서 제목 매칭을 방해하지 않게 함
                         ));
                     }
-
-                    // 설명 필드 격리
+                    // 설명 필드
                     // 전체 검색이거나, 특별히 설명 필드를 포함하는 조건일 때만 동작하게
                     if (request.searchConditions() == null || request.searchConditions().isEmpty()) {
                         b.should(s -> s.match(m -> m
                                 .field("description")
                                 .query(keyword)
-                                .boost(60.0F)
-                                .minimumShouldMatch("100%") // '자바'가 정확히 단어로 존재할 때만!
+                                .boost(1.0F)
+                                .minimumShouldMatch("100%") // 단어 누락은 허용하지 않음
                         ));
                     }
-
-
-
                     b.minimumShouldMatch("1");
 
                    // 가격 필터
@@ -409,7 +398,7 @@ public class BookSearchEsImpl implements BookSearchService {
         }
 
         // 품질 판정: 결과가 없거나, 점수가 낮거나, 실제 매칭되는 단어가 없으면 추천 모드 실행
-        boolean isLowQuality = Double.isNaN(maxScore) || maxScore < 2000.0 || !isRealMatch;
+        boolean isLowQuality = Double.isNaN(maxScore) || maxScore < 20.0 || !isRealMatch;
         long finalTotalHits;
 
         if (bookSearchList.isEmpty() || isLowQuality) {
