@@ -1,8 +1,8 @@
 name: Batch - bookSyncJob (03:00 KST)
 
 on:
-  schedule:
-    - cron: "0 18 * * *"
+#  schedule:
+#    - cron: "0 18 * * *"
   workflow_dispatch:
 
 jobs:

@@ -1,8 +1,8 @@
 name: Batch - dailyLoadJob (02:00 KST)
 
 on:
-  schedule:
-    - cron: "0 17 * * *"
+#  schedule:
+#    - cron: "0 17 * * *"
   workflow_dispatch:
 
 jobs:
